@@ -1,0 +1,24 @@
+package com.uslc.po.gui.master;
+
+import org.eclipse.swt.widgets.Composite;
+import com.uslc.po.gui.master.interfaces.LiveDataAccessLifeCicle;
+
+public class MasterSections extends Composite {
+	private Master master = null;
+
+	public MasterSections(Master master, int style) {
+		super(master, style);
+		this.master = master;
+		//initComposite();
+		//getLiveDataAccessLifeCicle();
+	}
+	
+	public Master getMaster() {
+		return master;
+	}
+	protected void initComposite(){
+	}
+	public LiveDataAccessLifeCicle getLiveDataAccessLifeCicle() {
+		return null;
+	}
+}

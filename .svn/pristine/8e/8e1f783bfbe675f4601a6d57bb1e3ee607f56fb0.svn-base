@@ -1,0 +1,1035 @@
+package com.uslc.po.gui.master;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+
+import org.apache.log4j.Logger;
+import org.apache.log4j.PropertyConfigurator;
+import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.Font;
+import org.eclipse.swt.graphics.FontData;
+import org.eclipse.swt.layout.FormData;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Combo;
+import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.MessageBox;
+import org.eclipse.swt.widgets.Table;
+import org.eclipse.swt.widgets.TableColumn;
+import org.eclipse.swt.widgets.TableItem;
+import org.eclipse.swt.widgets.Text;
+
+import com.ibm.icu.util.Calendar;
+import com.uslc.po.gui.util.PurchaseOrder;
+import com.uslc.po.gui.util.PurchaseOrderDetailUpload;
+import com.uslc.po.jpa.entity.Color;
+import com.uslc.po.jpa.entity.Item;
+import com.uslc.po.jpa.entity.Size;
+import com.uslc.po.jpa.entity.Upc;
+import com.uslc.po.jpa.logic.ColorRepo;
+import com.uslc.po.jpa.logic.ItemRepo;
+import com.uslc.po.jpa.logic.SizeRepo;
+import com.uslc.po.jpa.logic.UpcRepo;
+import com.uslc.po.jpa.util.Constants;
+
+public class NewPurchaseOrderComposite extends Composite {
+	private MasterCenterComposite parent = null;
+	private Label titleLbl = null;
+	private Text ordenNumberTxt = null;
+	private Label shipFromLbl = null;
+	private Text shipFromTxt = null;
+	private Label shipToLbl = null;
+	private Text shipToTxt = null;
+	private Label cartonLbl = null;
+	private Text cartonTxt = null;
+	private Label itemsLbl = null;
+	private Combo itemsCbx = null;
+	private Label deptLbl = null;
+	private Text deptTxt = null;
+	private Label timestampLbl = null;
+	private Text timestampTxt = null;
+	private Label poDetailLbl = null;
+	private Table poDetailTbl = null;
+	private Button add = null;
+	private Button del = null;
+	private Label totalItemsLbl = null;
+	
+	private Font fontLabels = null;
+	private Font fontTexts = null;
+	private Font fontAreas = null;
+	private GridData gdLabels = null;
+	private GridData gdTextAreas = null;
+	private GridData gdTexts = null;
+	private GridData gdSmallButtons = null;
+	private GridData gdHorizontal = null;
+	
+	private List<PODetailData> poDetailData = null;
+	private Logger log = null;
+	private int totalItems = 0;
+	
+	public NewPurchaseOrderComposite( MasterCenterComposite composite ){
+		super( composite.getMaster().getHiddenShell(), SWT.NONE );
+		this.parent = composite;
+		initComposite();
+	}
+	
+	private void initComposite(){
+		//getLog().info("initComposite");
+		FormData data = new FormData( 550, 550);
+		setLayoutData(data);
+		
+		setLayout( new GridLayout( 6, false ) );
+		
+		getTitleLbl();
+		getOrderNumberTxt();
+		getShipFromLbl();
+		getShipFromTxt();
+		getShipToLbl();
+		getShipToTxt();
+		getCartonLbl();
+		getCartonTxt();
+		getItemsLbl();
+		getItemsCbx();
+		getDeptLbl();
+		getDeptTxt();
+		getTimestampLbl();
+		getTimestampTxt();
+		getPoDetailLbl();
+		getPoDetailTbl();
+		getAdd();
+		getDel();
+		getTotalItemsLbl();
+		
+		loadValues();
+	}
+	
+	public Label getTitleLbl() {
+		if( titleLbl == null ){
+			getLog().info( "getTitleLbl()" );
+			titleLbl = new Label(this, SWT.NONE);
+			titleLbl.setText("purchase order: ");
+			//titleLbl.setLayoutData(getGdHorizontal());
+		}
+		return titleLbl;
+	}
+	public Text getOrderNumberTxt(){
+		if( ordenNumberTxt == null ){
+			ordenNumberTxt = new Text(this, SWT.NONE);
+			ordenNumberTxt.setLayoutData(getGdTexts());
+			ordenNumberTxt.setFont(getFontTexts());
+			
+			Label horizontaLabel = new Label(this, SWT.SEPARATOR | SWT.HORIZONTAL );
+			horizontaLabel.setLayoutData( getGdHorizontal() );
+		}
+		return ordenNumberTxt;
+	}
+	public Label getShipFromLbl() {
+		if( shipFromLbl == null ){
+			shipFromLbl = new Label(this, SWT.NONE);
+			shipFromLbl.setText( "ship from:" );
+			shipFromLbl.setLayoutData( getGdLabels() );
+			shipFromLbl.setAlignment( SWT.RIGHT );
+			shipFromLbl.setFont( getFontLabels() );
+		}
+		return shipFromLbl;
+	}
+	public Text getShipFromTxt() {
+		if( shipFromTxt == null ){
+			shipFromTxt = new Text(this, SWT.WRAP | SWT.MULTI | SWT.V_SCROLL);
+			shipFromTxt.setLayoutData(getGdTextAreas());
+			shipFromTxt.setFont(getFontTexts());
+		}
+		return shipFromTxt;
+	}
+	public Label getShipToLbl() {
+		if( shipToLbl == null ){
+			shipToLbl = new Label(this, SWT.NONE);
+			shipToLbl.setText( "ship to:" );
+			shipToLbl.setLayoutData( getGdLabels() );
+			shipToLbl.setAlignment( SWT.RIGHT );
+			shipToLbl.setFont( getFontLabels() );
+		}
+		return shipToLbl;
+	}
+	public Text getShipToTxt() {
+		if( shipToTxt == null ){
+			shipToTxt = new Text(this, SWT.WRAP | SWT.MULTI | SWT.V_SCROLL);
+			shipToTxt.setLayoutData(getGdTextAreas());
+			shipToTxt.setFont(getFontTexts());
+		}
+		return shipToTxt;
+	}
+	public Label getCartonLbl() {
+		if( cartonLbl == null ){
+			cartonLbl = new Label(this, SWT.NONE);
+			cartonLbl.setText( "carton:" );
+			cartonLbl.setLayoutData( getGdLabels() );
+			cartonLbl.setAlignment( SWT.RIGHT );
+			cartonLbl.setFont( getFontLabels() );
+		}
+		return cartonLbl;
+	}
+	public Text getCartonTxt() {
+		if( cartonTxt == null ){
+			cartonTxt = new Text(this, SWT.SINGLE | SWT.READ_ONLY);
+			cartonTxt.setLayoutData(getGdTexts());
+			cartonTxt.setFont(getFontTexts());
+		}
+		return cartonTxt;
+	}
+	public Label getItemsLbl() {
+		if( itemsLbl == null ){
+			itemsLbl = new Label(this, SWT.NONE);
+			itemsLbl.setText( "items:" );
+			itemsLbl.setLayoutData( getGdLabels() );
+			itemsLbl.setAlignment( SWT.RIGHT );
+			itemsLbl.setFont( getFontLabels() );
+		}
+		return itemsLbl;
+	}
+	public Combo getItemsCbx() {
+		if( itemsCbx == null ){
+			itemsCbx = new Combo(this, SWT.READ_ONLY);
+			itemsCbx.setLayoutData(getGdTexts());
+			itemsCbx.setFont(getFontTexts());
+			itemsCbx.addSelectionListener(new SelectionAdapter() {
+				
+				@Override
+				public void widgetSelected(SelectionEvent arg0) {
+					getParent().getMaster().getRightComposite().getNewPurchaseOrderDetail().loadVaues();
+				}
+			});
+		}
+		return itemsCbx;
+	}
+	public Label getDeptLbl() {
+		if( deptLbl == null ){
+			deptLbl = new Label(this, SWT.NONE);
+			deptLbl.setText( "dept #:" );
+			deptLbl.setLayoutData( getGdLabels() );
+			deptLbl.setAlignment( SWT.RIGHT );
+			deptLbl.setFont( getFontLabels() );
+		}
+		return deptLbl;
+	}
+	public Text getDeptTxt() {
+		if( deptTxt == null ){
+			deptTxt = new Text(this, SWT.SINGLE);
+			deptTxt.setLayoutData(getGdTexts());
+			deptTxt.setFont(getFontTexts());
+		}
+		return deptTxt;
+	}
+	public Label getTimestampLbl() {
+		if( timestampLbl == null ){
+			timestampLbl = new Label(this, SWT.NONE);
+			timestampLbl.setText( "timestamp:" );
+			timestampLbl.setLayoutData( getGdLabels() );
+			timestampLbl.setAlignment( SWT.RIGHT );
+			timestampLbl.setFont( getFontLabels() );
+		}
+		return timestampLbl;
+	}
+
+	public Text getTimestampTxt() {
+		if( timestampTxt == null ){
+			timestampTxt = new Text(this, SWT.SINGLE | SWT.READ_ONLY);
+			timestampTxt.setFont(getFontTexts());
+			
+			GridData gd = new GridData();
+			gd = new GridData(GridData.FILL_HORIZONTAL);
+			gd.grabExcessHorizontalSpace=true;
+			gd.horizontalSpan=2;
+			gd.widthHint = 150;
+			gd.heightHint = 23;
+			gd.horizontalAlignment = SWT.CENTER;
+			timestampTxt.setLayoutData(gd);
+			
+			Label horizontaLabel = new Label(this, SWT.SEPARATOR | SWT.HORIZONTAL );
+			horizontaLabel.setLayoutData( getGdHorizontal() );
+		}
+		return timestampTxt;
+	}
+	public Label getPoDetailLbl() {
+		if( poDetailLbl == null ){
+			poDetailLbl = new Label(this, SWT.NONE);
+			poDetailLbl.setText( "PO Details:" );
+			poDetailLbl.setLayoutData( getGdHorizontal() );
+		}
+		return poDetailLbl;
+	}
+	public Table getPoDetailTbl() {
+		if( poDetailTbl == null ){
+			poDetailTbl = new Table(this, SWT.MULTI );
+			poDetailTbl.setHeaderVisible(true);
+			Font f = poDetailTbl.getFont();
+			FontData[] fds = f.getFontData();
+			for (int i = 0; i < fds.length; i++) {
+				fds[i].setHeight(8);
+			}
+			
+			poDetailTbl.setFont( new Font(getDisplay(), fds));
+			
+			TableColumn upc = new TableColumn(poDetailTbl, SWT.NONE);
+			upc.setAlignment(SWT.CENTER);
+			upc.setText( "upc" );
+			upc.setWidth( 106 );
+			TableColumn colorName = new TableColumn(poDetailTbl, SWT.NONE);
+			colorName.setText( "color name" );
+			colorName.setWidth( 89 );
+			TableColumn colorItem = new TableColumn(poDetailTbl, SWT.NONE);
+			colorItem.setText( "" );
+			colorItem.setWidth( 106 );
+			TableColumn colorNumber = new TableColumn(poDetailTbl, SWT.NONE);
+			colorNumber.setText( "color #" );
+			colorNumber.setWidth( 65 );
+			TableColumn sku = new TableColumn(poDetailTbl, SWT.NONE);
+			sku.setText( "sku" );
+			sku.setWidth( 40 );
+			TableColumn size = new TableColumn(poDetailTbl, SWT.NONE);
+			size.setText( "size" );
+			size.setWidth( 63 );
+			TableColumn quantity = new TableColumn(poDetailTbl, SWT.NONE);
+			quantity.setText( "qty" );
+			quantity.setWidth( 39 );
+			
+			GridData gd = new GridData( GridData.FILL_HORIZONTAL );
+			gd.heightHint = 250;
+			gd.horizontalSpan=5;
+			gd.verticalSpan=10;
+			gd.verticalAlignment = SWT.TOP;
+			poDetailTbl.setLayoutData(gd);
+		}
+		return poDetailTbl;
+	}
+	public Button getAdd() {
+		if( add == null ){
+			add = new Button(this, SWT.PUSH);
+			add.setText("+");
+			add.setLayoutData(getGdSmallButtons());
+			add.addSelectionListener( new SelectionAdapter() {
+				
+				@Override
+				public void widgetSelected(SelectionEvent arg0) {
+					Item item = null;
+					try{ item = (Item)getItemsCbx().getData( getItemsCbx().getItem(getItemsCbx().getSelectionIndex()) );}catch(Exception e){}
+					if( item!=null ){
+						getParent().getMaster().getRightComposite().showComposite( getParent().getMaster().getRightComposite().getNewPurchaseOrderDetail() );
+					}else{
+						MessageBox box = new MessageBox(getShell(), SWT.ICON_INFORMATION);
+						box.setText( Constants.MESSAGE_BOX_DIAG_TITLE.toString() );
+						box.setMessage( "please select an item before adding the purchase order details" );
+						box.open();
+						getItemsCbx().setFocus();
+					}
+				}
+			});
+		}
+		return add;
+	}
+	public Button getDel() {
+		if( del == null ){
+			del = new Button(this, SWT.PUSH);
+			del.setText("-");
+			del.setLayoutData(getGdSmallButtons());
+			del.addSelectionListener(new SelectionAdapter() {
+				
+				@Override
+				public void widgetSelected(SelectionEvent arg0) {
+					removeSelectedPoDetail();
+					/*for( TableColumn tc : getPoDetailTbl().getColumns() ){
+						getLog().info( tc.getText() + ": " +tc.getWidth() );
+					}*/
+				}
+			});
+		}
+		return del;
+	}
+	public Label getTotalItemsLbl(){
+		if( totalItemsLbl == null ){
+			totalItemsLbl = new Label(this, SWT.BORDER);
+			totalItemsLbl.setText( "total items: 0" );
+			totalItemsLbl.setAlignment( SWT.RIGHT );
+			GridData gd = new GridData( GridData.HORIZONTAL_ALIGN_END | GridData.VERTICAL_ALIGN_CENTER );
+			gd.grabExcessHorizontalSpace = true;
+			gd.grabExcessVerticalSpace = true;
+			gd.horizontalSpan=5;
+			gd.widthHint = 140;
+			totalItemsLbl.setLayoutData(gd);
+			
+			Label horizontaLabel = new Label(this, SWT.SEPARATOR | SWT.HORIZONTAL );
+			horizontaLabel.setLayoutData( getGdHorizontal() );
+		}
+		return totalItemsLbl;
+	}
+	
+	private void removeSelectedPoDetail(){
+		TableItem[] items = getPoDetailTbl().getSelection();
+		for (TableItem tableItem : items) {
+			PODetailData obj = (PODetailData)tableItem.getData();
+			getPoDetailData().remove(obj);
+		}
+		loadPoDetails();
+	}
+	public GridData getGdLabels() {
+		if( gdLabels == null ){
+			gdLabels = new GridData(70, 23);
+			gdLabels.horizontalAlignment = SWT.RIGHT;
+			gdLabels.verticalAlignment = SWT.TOP;
+			
+		}
+		return gdLabels;
+	}
+	public GridData getGdTexts() {
+		if( gdTexts == null ){
+			gdTexts = new GridData();
+			gdTexts.horizontalSpan=2;
+			gdTexts.widthHint = 150;
+			gdTexts.heightHint = 23;
+		}
+		return gdTexts;
+	}
+	public GridData getGdTextAreas() {
+		if( gdTextAreas == null ){
+			gdTextAreas = new GridData();
+			gdTextAreas.horizontalSpan=2;
+			gdTextAreas.widthHint = 150;
+			gdTextAreas.heightHint = 46;
+		}
+		return gdTextAreas;
+	}
+	public GridData getGdSmallButtons(){
+		if( gdSmallButtons == null ){
+			gdSmallButtons = new GridData(23,23);
+			gdSmallButtons.horizontalAlignment = SWT.CENTER;
+			gdSmallButtons.verticalAlignment = SWT.CENTER;
+		}
+		return gdSmallButtons;
+	}
+	public GridData getGdHorizontal(){
+		if( gdHorizontal == null ){
+			gdHorizontal = new GridData( GridData.FILL_HORIZONTAL );
+			gdHorizontal.grabExcessHorizontalSpace = true;
+			gdHorizontal.horizontalSpan = 6;
+		}
+		return gdHorizontal;
+	}
+	
+	public void hide(){
+		clean();
+		this.setParent( getParent().getMaster().getHiddenShell() );
+		this.setVisible(false);
+		getParent().getMaster().getTopComposite().getCancel().setEnabled(false);
+	}
+	private void clean(){
+		poDetailData = null;
+		getShipFromTxt().setText("");
+		getShipToTxt().setText("");
+		getCartonTxt().setText("0");
+		getDeptTxt().setText("");
+		getItemsCbx().select(-1);
+		loadValues();
+		loadPoDetails();
+	}
+	public MasterCenterComposite getParent(){
+		return parent;
+	}
+	private void loadValues(){
+		getLog().info( "loadValues method" );
+		getItemsCbx().removeAll();
+		List<Item> items = ItemRepo.findAll();
+		for (Item item : items) {
+			getItemsCbx().add( String.valueOf( item.getCode() ) );
+			getItemsCbx().setData( String.valueOf( item.getCode() ), item );
+		}
+		
+		SimpleDateFormat sdf = new SimpleDateFormat( "yyyy-MM-dd HH:mm:ss" );
+		Calendar cal = Calendar.getInstance();
+		getTimestampTxt().setText( sdf.format( cal.getTime() ) );
+		getCartonTxt().setText("0");
+		try {
+			getShipFromTxt().setText( getParent().getMaster().getMaster().getShipFrom() );
+			getShipToTxt().setText( getParent().getMaster().getMaster().getShipTo() );
+			getDeptTxt().setText( getParent().getMaster().getMaster().getDepartmentNumber() );
+		} catch (IOException | NullPointerException e) {
+			getLog().error( "Error at loadVaues method", e);
+		}
+		
+	}
+	private Font getFontLabels(){
+		if( fontLabels == null ){
+			fontLabels = new Font(getDisplay(), "Segoe UI", 7, SWT.NORMAL);
+		}
+		return fontLabels;
+	}
+	private Font getFontTexts(){
+		if( fontTexts == null ){
+			try {
+				String fontName = "";
+				for( FontData fd : getParent().getMaster().getMaster().getDefaultMasterFont().getFontData() ){
+					fontName = fd.getName();
+				}
+				getLog().info( "fontName[" + fontName + "]" );
+				fontTexts = new Font( getDisplay(), fontName, 8, SWT.NORMAL );
+			} catch (IOException e) {
+				e.printStackTrace();
+			};
+			
+		}
+		return fontTexts;
+	}
+	private Font getFontAreas(){
+		if( fontAreas == null ){
+			try {
+				String fontName = "";
+				for( FontData fd : getParent().getMaster().getMaster().getDefaultMasterFont().getFontData() ){
+					fontName = fd.getName();
+				}
+				getLog().info( "fontName[" + fontName + "]" );
+				fontAreas = new Font( getDisplay(), fontName, 8, SWT.NORMAL );
+			} catch (IOException e) {
+				e.printStackTrace();
+			};
+			
+		}
+		return fontAreas;
+	}
+	public List<PODetailData> getPoDetailData(){
+		if( poDetailData == null ){
+			poDetailData = new ArrayList<PODetailData>();
+		}
+		return poDetailData;
+	}
+	public boolean addPoDetail( PODetailData poDetail ){
+		boolean success = false;
+		boolean alreadyIn = false;
+		
+		Upc newUpc = poDetail.getUpc();
+		int qty = poDetail.getQty();
+		int itemsPerCarton = poDetail.getItemsPerCarton();
+		boolean preticketed = poDetail.isPreticketed();
+		
+		for (PODetailData o : getPoDetailData()) {
+			Upc tmpUpc = o.getUpc();
+			int tmpItemsPerCarton = o.getItemsPerCarton();
+			boolean tmpPreticketed = o.isPreticketed();
+			
+			if( tmpUpc.getId()==newUpc.getId() 
+					&& tmpItemsPerCarton==itemsPerCarton
+					&& tmpPreticketed==preticketed ){
+				getLog().info( "tmpUpc["+tmpUpc.getId()+","+tmpUpc.getUpcCode()+"] - newUpc["+newUpc.getId()+","+newUpc.getUpcCode()+"]" );
+				alreadyIn=true;
+				break;
+			}
+		}
+		
+		if( alreadyIn ){
+			MessageBox msg = new MessageBox(this.getShell(), SWT.ICON_ERROR );
+			msg.setText( Constants.MESSAGE_BOX_DIAG_TITLE.toString() );
+			msg.setMessage( "selected upc["+newUpc.getUpcCode()+"] is already in list, select a different one, or change the quantity" );
+			msg.open();
+		}else{
+			getPoDetailData().add(poDetail);
+			loadPoDetails();
+			success = true;
+		}
+		
+		return success;
+	}
+	private void loadPoDetails(){
+		getPoDetailTbl().removeAll();
+		getLog().info(  "loadPoDetails - getPoDetailTbl().getItemCount( " + getPoDetailTbl().getItemCount() + " )" );
+		
+		int sku = 0;
+		totalItems = 0;
+		getLog().info( "loadPoDetails - getPoDetailData().size( " + getPoDetailData().size() + " )" );
+		for (PODetailData det : getPoDetailData()) {
+			Upc upc = det.getUpc();
+			int qty = det.getQty();
+			int itemsPerCarton = det.getItemsPerCarton();
+			
+			int cartons = (int)Math.ceil( new Double(qty)/new Double(itemsPerCarton) );
+			int qtyControl = qty;
+			getLog().info( "qty["+qty+"], itemsPerCarton[" + itemsPerCarton + "], cartons[" + cartons + "], qtyControl[" + qtyControl + "]" );
+			for( int i = 0 ; i < cartons ; i++ ){
+				//getLog().info( "adding carton detail" );
+				int itemsInCarton = 0;
+				if( qtyControl < itemsPerCarton ){
+					itemsInCarton = qtyControl;
+				}else{
+					itemsInCarton = itemsPerCarton;
+				}
+				qtyControl = qtyControl - itemsInCarton;
+				
+				TableItem row = new TableItem(getPoDetailTbl(), SWT.READ_ONLY);
+				String size = "";
+				if( getOrderNumberTxt().getText().trim().endsWith( "11" ) ){
+					size = String.valueOf( upc.getSize().getWaist() );
+				}else{
+					size = upc.getSize().getWaist() + " x " + upc.getSize().getInseam();
+				}
+				String[] texts = {upc.getUpcCode(), 
+						upc.getColor().getName(), 
+						( upc.getColor().getName()+"-"+upc.getItem().getCode() ), 
+						upc.getColor().getNumber(), 
+						String.valueOf( ++sku ), 
+						size,
+						String.valueOf( itemsInCarton ) };
+				row.setText(texts);
+				row.setData( det );
+			}
+			totalItems += qty;
+		}
+		
+		if( getPoDetailTbl().getItems().length>0 ){
+			//getItemsCbx().setEnabled(false);
+			getParent().getMaster().getTopComposite().getSavePo().setEnabled(true);
+			getCartonTxt().setText( String.valueOf( sku ) );
+		}else{
+			//getItemsCbx().setEnabled(true);
+			getParent().getMaster().getTopComposite().getSavePo().setEnabled(false);
+			getCartonTxt().setText( "0" );
+			totalItems = 0;
+		}
+		getLog().info( "total items: " + totalItems );
+		getTotalItemsLbl().setText( "total items: " + String.valueOf( totalItems ) );
+		layout();
+		getParent().layout();
+		getParent().getMaster().getShell().layout();
+	}
+	
+	private Logger getLog(){
+		if( log == null ){
+			log = Logger.getLogger(NewPurchaseOrderComposite.class);
+			PropertyConfigurator.configure("log4j.properties");
+		}
+		return log;
+	}
+
+	public void savePo() {
+		String departmentNumber = "";
+		String referenceNumber = "";
+		String shipFrom = "";
+		String shipTo = "";
+		int totalCartons = 0;
+		
+		com.uslc.po.jpa.entity.PurchaseOrder po = null;
+		
+		try{
+			departmentNumber = getDeptTxt().getText().trim();
+			referenceNumber = getOrderNumberTxt().getText();
+			shipFrom = getShipFromTxt().getText();
+			shipTo = getShipToTxt().getText();
+			totalCartons = Integer.parseInt( getCartonTxt().getText() );
+			
+			getLog().info( "getPoDetailData().size()[" + getPoDetailData().size() + "] - departmentNumber["+departmentNumber+"]" );
+			po = PurchaseOrder.createPurchaseOrderCascade(departmentNumber, referenceNumber, shipFrom, shipTo, totalCartons, totalItems, getPoDetailData());
+			
+			
+			MessageBox box = null;
+			if( po!=null ){
+				box = new MessageBox(getShell(), SWT.ICON_INFORMATION);
+				clean();
+				getParent().getMaster().getRightComposite().hideAllComposites();
+				getParent().getMaster().getLeftComposite().fillPo();
+				box.setMessage( "purchase order added correctly to the system." );
+			}else{
+				box = new MessageBox(getShell(), SWT.ICON_ERROR);
+				box.setMessage( "there was a problem adding the purchase order." );
+			}
+			box.setText( Constants.MESSAGE_BOX_DIAG_TITLE.toString() );
+			box.open();
+		}catch( Exception e ){
+			e.printStackTrace();
+			MessageBox box = new MessageBox(getShell(), SWT.ICON_ERROR);
+			box.setText( Constants.MESSAGE_BOX_DIAG_TITLE.toString() );
+			box.setMessage( e.getMessage() );
+			box.open();
+		}
+	}
+
+	public Exception fillWithUploadedFile(String path){
+		int upcCol = -1;
+		int deptCol = -1;
+		int itemCol = -1;
+		int poCol = -1;
+		int colorNameCol = -1;
+		int colorNumCol = -1;
+		int sizeCol = -1;
+		int qtyCol = -1;
+		int qtyPerCartonCol = -1;
+		
+		getPoDetailData().clear();
+		
+		Exception e = null;
+		try {
+			FileInputStream file = new FileInputStream(new File(path));
+			Workbook workbook = WorkbookFactory.create(file);
+			Sheet sheet = workbook.getSheetAt(0);
+			Iterator<Row> rows = sheet.iterator();
+			
+			List<PurchaseOrderDetailUpload> podUpload = new ArrayList<PurchaseOrderDetailUpload>();
+			
+			HashMap<String,Upc> uploadUpc = new HashMap<String, Upc>();
+			HashMap<String,Color> uploadColor = new HashMap<String, Color>();
+			HashMap<String,Size> uploadSize = new HashMap<String, Size>();
+			HashMap<String,Item> uploadItem = new HashMap<String, Item>();
+			
+			List<Object[]> det = new ArrayList<Object[]>();
+			
+			boolean missingInCatalog = false;
+			while( rows.hasNext() ){
+				Row row = rows.next();
+				
+				if( upcCol==-1 || deptCol==-1 || itemCol==-1 
+						|| poCol==-1 || colorNameCol == -1
+						|| colorNumCol==-1 || sizeCol==-1 || qtyCol==-1 ){
+				
+					Iterator<Cell> cells = row.iterator();
+					while( cells.hasNext() ){
+						Cell cell = cells.next();
+						String name = cell.getStringCellValue().toLowerCase().trim();
+						int colIndex = cell.getColumnIndex();
+						getLog().info( "name["+name+"] - colIndex["+colIndex+"]" );
+						
+						if( name.contains( "upc" ) ){
+							upcCol=colIndex;
+						}
+						if( name.contains("dept") ){
+							deptCol=colIndex;
+						}
+						if( name.contains("item") ){
+							itemCol=colIndex;
+						}
+						if( name.contains( "po #" ) ){
+							poCol = colIndex;
+						}
+						if( name.contains( "color name" ) ){
+							colorNameCol = colIndex;
+						}
+						if( name.contains("color #") ){
+							colorNumCol=colIndex;
+						}
+						if( name.contains( "size" ) ){
+							sizeCol=colIndex;
+						}
+						if( name.contains("po qty") ){
+							qtyCol=colIndex;
+						}
+						if( name.contains("carton") ){
+							qtyPerCartonCol=colIndex;
+						}
+					}
+					getLog().info( "upcCol[" + upcCol + "], deptCol[" + deptCol + "], " + 
+							"itemCol[" + itemCol + "], poCol["+ poCol + "], colorNameCol[" + 
+							colorNameCol + "], colorNumCol[" + colorNumCol + "], sizeCol[" + sizeCol + "], "
+							+ "qtyCol[" + qtyCol + "], qtyPerCartonCol["+qtyPerCartonCol+"]" );
+				}else{
+					try{
+						String upcCodeVal = getStringValue(row.getCell(upcCol));
+						String deptNumberVal = getStringValue(row.getCell(deptCol));
+						String itemCodeVal = getStringValue(row.getCell(itemCol)); 
+						String poNumberVal = getStringValue(row.getCell(poCol));
+						String colorNameVal = getStringValue(row.getCell(colorNameCol));
+						String colorNumberVal = getStringValue(row.getCell(colorNumCol)); 
+						String sizeVal = getStringValue( row.getCell( sizeCol ) );
+						int itemsVal = getIntValue(row.getCell(qtyCol));
+						int itemsPerCartonVal = qtyPerCartonCol!=-1?getIntValue(row.getCell(qtyPerCartonCol)):getParent().getMaster().getMaster().getDefaultQtyPerCarton();
+						
+						if( colorNameVal!=null && 
+								colorNameVal.compareTo("")!=0 && 
+								itemCodeVal.compareTo("")!=0 && 
+								sizeVal!=null && sizeVal.compareTo("")!=0 && 
+								upcCodeVal!=null && upcCodeVal.compareTo("")!=0 ){
+							Color color = ColorRepo.findByNumber(colorNumberVal);
+							Item item = ItemRepo.findByCode(itemCodeVal);
+							Size size = null;
+							if( poNumberVal.endsWith("11") ){
+								size = SizeRepo.findByWaist(Integer.parseInt(sizeVal));
+							}else{
+								size = SizeRepo.findByWaistInstream(sizeVal);
+							}
+							
+							Upc upc = UpcRepo.findByCode(upcCodeVal);
+							
+							if( color==null){
+								color = new Color();
+								color.setName(colorNameVal);
+								color.setNumber(colorNumberVal);
+								missingInCatalog = true;
+								getLog().info( "not found color{"+colorNameVal+"}" );
+							}
+							if( item==null ){
+								item = new Item();
+								item.setCode(itemCodeVal);
+								missingInCatalog = true;
+								getLog().info( "not found item{"+itemCodeVal+"}" );
+							}
+							if( size==null ){
+								size = new Size();
+								int waist = Integer.parseInt( sizeVal.substring(0, 2) );
+								int inseam = 36;
+								if( !poNumberVal.endsWith("11") ){
+									inseam = Integer.parseInt( sizeVal.substring(3, 5) );
+								}
+								size.setWaist(waist);
+								size.setHip(30);
+								size.setInseam(inseam);
+								missingInCatalog = true;
+								getLog().info( "not found size{"+sizeVal+"}" );
+							}
+							if( upc==null ){
+								upc = new Upc();
+								upc.setColor(color);
+								upc.setColorItemCode(color.getName()+"-"+item.getCode());
+								upc.setDeleted(false);
+								upc.setItem(item);
+								upc.setSize(size);
+								upc.setUpcCode(upcCodeVal);
+								upc.setTimestamp( Calendar.getInstance().getTime() );
+								missingInCatalog = true;
+								getLog().info( "not found upc{"+upcCodeVal+"}" );
+							}	
+							
+							uploadColor.put(colorNumberVal, color);
+							uploadItem.put(itemCodeVal, item);
+							uploadSize.put(sizeVal, size);
+							uploadUpc.put(upcCodeVal, upc);
+							podUpload.add( new PurchaseOrderDetailUpload(upcCodeVal, deptNumberVal, itemCodeVal, poNumberVal, colorNameVal, colorNumberVal, sizeVal, itemsVal, itemsPerCartonVal ) );
+						}else{
+							break;
+						}
+					}catch( Exception e1 ){
+						getLog().error( "error while reading po details", e1 );
+					}
+				}
+			}
+			
+			getLog().info( "podUpload.size( " + podUpload.size() + ")" );
+			if( missingInCatalog ){
+				String message = countMissingCatalogs( uploadColor, uploadItem, uploadSize, uploadUpc );
+				MessageBox msg = new MessageBox(getShell(), SWT.ICON_QUESTION | SWT.YES | SWT.NO);
+				msg.setText(Constants.MESSAGE_BOX_DIAG_TITLE.toString());
+				msg.setMessage(message);
+				if( msg.open() == SWT.YES ){
+					if( addMisingCatalogs( uploadColor, uploadItem, uploadSize, uploadUpc ) ){
+						e = addUploadedPurchaseOrder( uploadColor, uploadItem, uploadSize, uploadUpc, podUpload );
+					}else{
+						e =new Exception("there was a problem adding the catalogs.");
+					}
+				}else{
+					e = new Exception( "there are missing catalogs that need to be added before" );
+				}
+			}else{
+				e = addUploadedPurchaseOrder( uploadColor, uploadItem, uploadSize, uploadUpc, podUpload );
+			}
+		} catch (FileNotFoundException e1) {
+			e1.printStackTrace();
+			getLog().error(e1);
+			e = e1;
+		} catch (InvalidFormatException e1) {
+			e1.printStackTrace();
+			getLog().error(e1);
+			e = e1;
+		} catch (IOException e1) {
+			e1.printStackTrace();
+			getLog().error(e1);
+			e = e1;
+		} catch( NullPointerException e1 ){
+			e1.printStackTrace();
+			getLog().error(e1);
+			e = e1;
+		} catch (Exception e1) {
+			e1.printStackTrace();
+			getLog().error(e1);
+			e = e1;
+		}
+		return e;
+	}
+	
+	private Exception addUploadedPurchaseOrder( HashMap<String, Color> uploadColor, HashMap<String, Item> uploadItem, HashMap<String, Size> uploadSize, HashMap<String, Upc> uploadUpc, List<PurchaseOrderDetailUpload> podUpload) {
+		Exception e = null;
+		
+		getLog().info( "uploadItem.size(" + uploadItem.size() + ")" );
+		String poReference = "";
+		for (PurchaseOrderDetailUpload podu : podUpload) {
+			poReference = podu.getPoNumber();
+			if( poReference!=null && poReference.compareTo("")!=0 )
+				break;
+		}
+		
+		try {
+			getOrderNumberTxt().setText( poReference );
+			getShipFromTxt().setText( getParent().getMaster().getMaster().getShipFrom() );
+			getShipToTxt().setText( getParent().getMaster().getMaster().getShipTo() );
+			getDeptTxt().setText( getParent().getMaster().getMaster().getDepartmentNumber() );
+			getPoDetailData().clear();
+			for (PurchaseOrderDetailUpload podu : podUpload) {
+				PODetailData poData = new PODetailData(uploadUpc.get(podu.getUpcCode()), 
+						podu.getItems(), 
+						podu.getItemsPerCarton(), 
+						(poReference.endsWith("0011")?false:true) );
+				addPoDetail(poData);
+			}
+			loadPoDetails();
+		} catch (IOException e1) {
+			getLog().error( "error in addUploadedPurchaseOrder method", e1 );
+			e = e1;
+		}
+		
+		return e;
+	}
+
+	private boolean addMisingCatalogs(HashMap<String, Color> uploadColor, HashMap<String, Item> uploadItem, HashMap<String, Size> uploadSize, HashMap<String, Upc> uploadUpc) throws Exception {
+		boolean success = false;
+		
+		Iterator<Entry<String, Color>> itColor = uploadColor.entrySet().iterator();
+		while( itColor.hasNext() ){
+			Map.Entry<String, Color> entry = itColor.next();
+			if( !(entry.getValue().getId()>0) )
+				uploadColor.put( entry.getKey(), ColorRepo.createColor(entry.getValue() ) );
+		}
+		Iterator<Entry<String, Item>> itItem = uploadItem.entrySet().iterator();
+		while( itItem.hasNext() ){
+			Map.Entry<String, Item> entry = itItem.next();
+			if( !(entry.getValue().getId()>0) )
+				uploadItem.put( entry.getKey(), ItemRepo.createItem( entry.getValue() ) );
+		}
+		Iterator<Entry<String, Size>> itSize = uploadSize.entrySet().iterator();
+		while( itSize.hasNext() ){
+			Map.Entry<String, Size> entry = itSize.next();
+			if( !(entry.getValue().getId()>0) )
+				uploadSize.put( entry.getKey(), SizeRepo.createSize(entry.getValue() ) );
+		}
+		Iterator<Entry<String, Upc>> itUpc = uploadUpc.entrySet().iterator();
+		while( itUpc.hasNext() ){
+			Map.Entry<String,Upc> entry = itUpc.next();
+			Upc upc = entry.getValue();
+			upc.setColor(ColorRepo.findByNumber(upc.getColor().getNumber()));
+			upc.setItem(ItemRepo.findByCode(upc.getItem().getCode()));
+			upc.setSize(SizeRepo.findByWaistInstream(String.valueOf(upc.getSize().getWaist()+"x"+upc.getSize().getInseam())));
+			if( !(entry.getValue().getId()>0) )
+				uploadUpc.put(entry.getKey(), UpcRepo.createUpc( entry.getValue() ) );
+		}
+		success = true;
+		return success;
+	}
+
+	private String countMissingCatalogs(HashMap<String, Color> uploadColor,
+			HashMap<String, Item> uploadItem,
+			HashMap<String, Size> uploadSize, HashMap<String, Upc> uploadUpc) {
+		String msg = "there are ";
+		int missingColors = 0;
+		int missingItems = 0;
+		int missingSizes = 0;
+		int missindUpcs = 0;
+		
+		Iterator<Entry<String,Color>> itColor = uploadColor.entrySet().iterator();
+		while( itColor.hasNext() ){
+			Map.Entry<String, Color> entry = itColor.next();
+			if( !(entry.getValue().getId()>0) ){
+				missingColors++;
+			}
+		}
+		if(missingColors>0)msg = msg + missingColors + " colors, ";
+		Iterator<Entry<String,Item>> itItem = uploadItem.entrySet().iterator();
+		while( itItem.hasNext() ){
+			Map.Entry<String, Item> entry = itItem.next();
+			if( !( entry.getValue().getId()>0 ) ){
+				missingItems++;
+			}
+		}
+		if(missingItems>0)msg = msg + missingItems + " items, ";
+		Iterator<Entry<String,Size>> itSize = uploadSize.entrySet().iterator();
+		while( itSize.hasNext() ){
+			Map.Entry<String, Size> entry = itSize.next();
+			if( !( entry.getValue().getId()>0 ) ){
+				missingSizes++;
+			}
+		}
+		if(missingSizes>0)msg = msg + missingSizes + " sizes, ";
+		Iterator<Entry<String,Upc>> itUpc = uploadUpc.entrySet().iterator();
+		while( itUpc.hasNext() ){
+			Map.Entry<String, Upc> entry = itUpc.next();
+			if( !( entry.getValue().getId()>0 ) ){
+				missindUpcs++;
+			}
+		}
+		if(missindUpcs>0)msg = msg + missindUpcs + " upc ";
+		
+		StringBuilder b = new StringBuilder(msg);
+		try{b.replace(msg.lastIndexOf(","), msg.lastIndexOf(",") + 1, "" );}catch(Exception e){}
+		msg = b.toString();
+		msg = msg + "missing, would you like to add them before?";
+		
+		return msg;
+	}
+
+	private String getStringValue( Cell cell ) throws Exception{
+		String val = "";
+		if( cell.getCellType()==Cell.CELL_TYPE_NUMERIC ){
+			DecimalFormat decimalFormat=new DecimalFormat("#");
+			val = decimalFormat.format( cell.getNumericCellValue() );
+		}else if( cell.getCellType()==Cell.CELL_TYPE_STRING ){
+			val = cell.getStringCellValue();
+		}
+		return val;
+	}
+	private int getIntValue( Cell cell ) throws Exception{
+		int val = 0;
+		if( cell.getCellType()==Cell.CELL_TYPE_NUMERIC ){
+			val = Integer.parseInt( getStringValue( cell ) );
+		}else if( cell.getCellType()==Cell.CELL_TYPE_STRING ){
+			val = Integer.parseInt( cell.getStringCellValue() );
+		}
+		return val;
+	}
+
+	public class PODetailData{
+		private Upc upc = null;
+		private int qty = 0;
+		private int itemsPerCarton = 0;
+		private boolean preticketed = false;
+		public PODetailData(Upc newUpc, int qty, int itemsPerCarton,
+				boolean preticketed) {
+			this.upc = newUpc;
+			this.qty = qty;
+			this.itemsPerCarton = itemsPerCarton;
+			this.preticketed = preticketed;
+		}
+		
+		public Upc getUpc() {
+			return upc;
+		}
+		public int getQty() {
+			return qty;
+		}
+		public int getItemsPerCarton() {
+			return itemsPerCarton;
+		}
+		public boolean isPreticketed() {
+			return preticketed;
+		}
+	}
+
+}

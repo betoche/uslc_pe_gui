@@ -1,0 +1,355 @@
+package com.uslc.gui;
+
+import java.awt.Toolkit;
+
+import org.apache.log4j.Logger;
+import org.apache.log4j.PropertyConfigurator;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.FocusEvent;
+import org.eclipse.swt.events.FocusListener;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.events.TraverseEvent;
+import org.eclipse.swt.events.TraverseListener;
+import org.eclipse.swt.graphics.Font;
+import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.graphics.Rectangle;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.MessageBox;
+import org.eclipse.swt.widgets.Monitor;
+import org.eclipse.swt.widgets.Shell;
+import org.eclipse.swt.widgets.Text;
+import com.ibm.icu.util.Calendar;
+import com.uslc.po.gui.master.Master;
+import com.uslc.po.jpa.entity.Log;
+import com.uslc.po.jpa.entity.User;
+import com.uslc.po.jpa.logic.Actions;
+import com.uslc.po.jpa.logic.Forms;
+import com.uslc.po.jpa.logic.UserType;
+import com.uslc.po.jpa.util.Constants;
+import com.uslc.po.jpa.util.UslcJpa;
+
+public class Login {
+	private Display display = null;
+	private Shell shell = null;
+	private Monitor monitor = null;
+	private Label formTitle = null;
+	private Label userLabel = null;
+	private Label passwordLabel = null;
+	private Text userInput = null;
+	private Text passwordInput = null;
+	private Button loginButton = null;
+	private Button cancelButton = null;
+	private Logger log = null;
+	
+	private LiveDataAccess lda = null;
+	
+	public Login(){
+		init();
+	}
+	
+	private void init(){
+		getFormTitle();
+		getUserLabel();
+		getUserInput();
+		getPasswordLabel();
+		getPasswordInput();
+		getLoginButton();
+		getCancelButton();
+		
+		getShell().open();
+		//getShell().pack();
+		
+		while( !getShell().isDisposed() ){
+			if( !getDisplay().readAndDispatch() ){
+				getDisplay().sleep();
+			}
+		}
+		getDisplay().dispose();
+	}
+	public Display getDisplay(){
+		if( display == null ){
+			display = new Display();
+		}
+		return display;
+	}
+	public Monitor getMonitor(){
+		if( monitor == null ){
+			monitor = getDisplay().getPrimaryMonitor();
+		}
+		return monitor;
+	}
+	public Shell getShell(){
+		if( shell == null ){
+			shell = new Shell( getDisplay(), SWT.CLOSE );
+			shell.setLayout( new GridLayout(4,false) );
+			shell.setTouchEnabled(true);
+			shell.setText( "USLC Apparel - login" );
+			shell.setSize( 260, 220 );
+			shell.setImage( new Image(getDisplay(), "images/login.png"));
+			Rectangle bounds = getMonitor().getBounds();
+			Rectangle rect = getShell().getBounds();
+			
+			int x = bounds.x + (bounds.width - rect.width)/2;
+			int y = bounds.y + (bounds.height - rect.height )/2;
+			
+			getShell().setLocation( x, y );
+		}
+		return shell;
+	}
+	
+	public LiveDataAccess getLiveDataAccess() {
+		if( lda == null ) {
+			lda = new LiveDataAccess();
+		}
+		return lda;
+	}
+	public Label getFormTitle() {
+		if( formTitle == null ){
+			formTitle = new Label( getShell(), SWT.NONE );
+			formTitle.setText("purchase order login");
+			formTitle.setAlignment( SWT.LEFT );
+			formTitle.setFont( new Font(getDisplay(), "Calibri", 12, SWT.NORMAL ) );
+			
+			GridData data = new GridData(GridData.FILL_HORIZONTAL);
+			data.horizontalSpan=4;
+			
+			formTitle.setLayoutData(data);
+			
+			(new Label( getShell(), SWT.SEPARATOR | SWT.HORIZONTAL )).setLayoutData(data);
+		}
+		return formTitle;
+	}
+	public Label getUserLabel() {
+		if( userLabel == null ){
+			userLabel = new Label( getShell(), SWT.NONE );
+			userLabel.setText("username:");
+			userLabel.setFont( new Font( getDisplay(), "Calibri", 10, SWT.NORMAL ) );
+			userLabel.setAlignment(SWT.RIGHT);
+			
+			GridData gd = new GridData( GridData.FILL_HORIZONTAL );
+			gd.widthHint=70;
+			userLabel.setLayoutData(gd);
+			
+			GridData data = new GridData(GridData.FILL_VERTICAL);
+			data.verticalSpan=2;
+			data.widthHint=10;
+			(new Label(getShell(), SWT.SEPARATOR | SWT.VERTICAL)).setLayoutData(data);
+		}
+		return userLabel;
+	}
+	public Label getPasswordLabel() {
+		if( passwordLabel == null ){
+			passwordLabel = new Label( getShell(), SWT.NONE );
+			passwordLabel.setText("password:");
+			passwordLabel.setFont( new Font(getDisplay(), "Calibri", 10, SWT.NORMAL ) );
+			passwordLabel.setAlignment(SWT.RIGHT);
+			
+			GridData gd = new GridData( GridData.FILL_HORIZONTAL );
+			gd.widthHint=70;
+			passwordLabel.setLayoutData(gd);
+		}
+		return passwordLabel;
+	}
+	public Text getUserInput() {
+		if( userInput == null ){
+			userInput = new Text(getShell(), SWT.BORDER);
+			//userInput.setText( "alberto" );
+			//userInput.setText( "Admin" );
+			userInput.setText( "" );
+			userInput.addTraverseListener(new TraverseListener() {
+				public void keyTraversed(TraverseEvent event) {
+					if(event.detail == SWT.TRAVERSE_RETURN) {
+						makeLogin();
+					}
+				}
+			});
+			userInput.addFocusListener(new FocusListener() {
+				
+				@Override
+				public void focusLost(FocusEvent arg0) {
+					// TODO Auto-generated method stub
+					
+				}
+				
+				@Override
+				public void focusGained(FocusEvent arg0) {
+					userInput.selectAll();
+				}
+			});
+			GridData gd = new GridData( GridData.FILL_HORIZONTAL );
+			gd.horizontalSpan=2;
+			gd.grabExcessHorizontalSpace=true;
+			gd.widthHint=150;
+			userInput.setLayoutData(gd);
+		}
+		return userInput;
+	}
+	public Text getPasswordInput() {
+		if( passwordInput == null ){
+			passwordInput = new Text( getShell(), SWT.PASSWORD | SWT.BORDER );
+			//passwordInput.setText( "alberto" );
+			//passwordInput.setText( "guacalito" );
+			passwordInput.setText( "" );
+			passwordInput.addTraverseListener(new TraverseListener() {
+				public void keyTraversed(TraverseEvent event) {
+					if(event.detail == SWT.TRAVERSE_RETURN) {
+						makeLogin();
+					}
+				}
+			});
+			passwordInput.addFocusListener(new FocusListener() {
+				
+				@Override
+				public void focusLost(FocusEvent arg0) {
+					// TODO Auto-generated method stub
+					
+				}
+				
+				@Override
+				public void focusGained(FocusEvent arg0) {
+					passwordInput.selectAll();
+				}
+			});
+			GridData gd = new GridData( GridData.FILL_HORIZONTAL );
+			gd.horizontalSpan=2;
+			gd.grabExcessHorizontalSpace=true;
+			gd.widthHint=150;
+			
+			passwordInput.setLayoutData(gd);
+		}
+		return passwordInput;
+	}
+	public Button getLoginButton() {
+		if( loginButton == null ){
+			loginButton = new Button( getShell(), SWT.PUSH );
+			loginButton.setText( "login" );
+			loginButton.setFont( new Font( getDisplay(), "Calibri", 10, SWT.NORMAL ) );
+			loginButton.setImage( new Image(getDisplay(), "images/go.png") );
+			
+			GridData data = new GridData(GridData.FILL_HORIZONTAL);
+			data.horizontalSpan=2;
+			data.widthHint=100;
+
+			loginButton.setLayoutData( data );
+			loginButton.addSelectionListener(new SelectionAdapter() {
+				@Override
+				public void widgetSelected(SelectionEvent arg0) {
+					makeLogin();
+				}
+			});
+		}
+		return loginButton;
+	}
+	public void makeLogin(){
+		String username = "";
+		String password = "";
+		
+		username = getUserInput().getText().trim();
+		password = getPasswordInput().getText().trim();
+			
+		User user = null;
+		try {
+			user = getLiveDataAccess().getUslcData().getUser(username, password);
+			//user = UserRepo.findUser( username, password );
+			
+			if( user==null ){
+				MessageBox msg = new MessageBox(getShell(), SWT.ICON_ERROR);
+				
+				msg.setText( Constants.MESSAGE_BOX_DIAG_TITLE.toString() );
+				msg.setMessage( "username or password invalid, please try again." );
+				msg.open();
+			}else if( !user.isEnabled() ){
+				MessageBox msg = new MessageBox(getShell(), SWT.ICON_ERROR);
+				
+				msg.setText( Constants.MESSAGE_BOX_DIAG_TITLE.toString() );
+				msg.setMessage( "the username has been disabled, please contact your system administrator" );
+				msg.open();
+			}else {
+				Log newLog = new Log();
+				newLog.setActionId(Actions.LOGIN.getId());
+				newLog.setFormId(Forms.LOGIN.getId());
+				newLog.setDescription( "user log in success" );
+				newLog.setTimestamp(Calendar.getInstance().getTime());
+				newLog.setUser(user);
+				newLog.getUser().setActive(true);
+				try{
+					UslcJpa jpa = getLiveDataAccess().getUslcData().getJpa();
+					if( user.getId()>0 ) {
+						if( jpa.persist( newLog ) ) {
+							jpa.persist(user);
+						}
+					} else {
+						newLog = (Log)jpa.merge( newLog );
+						if( newLog!=null ){
+							jpa.persist(user);
+						}
+					}
+					user = newLog.getUser();
+				}catch( Exception e ){
+					getLog().error( "error trying to create a log", e );
+				}
+				
+				SystemCommons gui = null;
+				if( user.getUserType()==UserType.ADMIN.getId() ){
+					gui = new Master(getShell(), getDisplay(), user);
+					
+					//POMaster master = new POMaster( getShell(), getDisplay(), user );
+					//getShell().dispose();
+				}else if( user.getUserType()==UserType.CLIENT.getId() ){
+					gui = new ClientLogic( getShell(), getDisplay(), user );
+					//POClient client = new POClient(getShell(), getDisplay(), user);
+					//getShell().dispose();
+				}
+			}
+		} catch (Exception e1) {
+			MessageBox msg = new MessageBox(getShell(), SWT.ICON_ERROR);
+			msg.setText( Constants.MESSAGE_BOX_DIAG_TITLE.toString() );
+			msg.setMessage( e1.getMessage() );
+			msg.open();
+			
+			getLog().error("error", e1);
+		}
+	}
+	public Button getCancelButton() {
+		if( cancelButton == null ){
+			cancelButton = new Button( getShell(), SWT.PUSH );
+			cancelButton.setText( "cancel" );
+			cancelButton.setFont( new Font( getDisplay(), "Calibri", 10, SWT.NORMAL ) );
+			cancelButton.setImage( new Image(getDisplay(), "images/login_cancel.png") );
+			
+			GridData data = new GridData(GridData.FILL_HORIZONTAL);
+			data.horizontalSpan=2;
+			data.widthHint=150;
+			
+			cancelButton.setLayoutData( data );
+			
+			cancelButton.addSelectionListener(new SelectionAdapter() {
+				@Override
+				public void widgetSelected(SelectionEvent arg0) {
+					Toolkit.getDefaultToolkit().beep();
+					getShell().dispose();
+					System.exit(0);
+				}
+			});
+		}
+		return cancelButton;
+	}
+	
+	private Logger getLog(){
+		if( log == null ){
+			log = Logger.getLogger( Login.class );
+			PropertyConfigurator.configure( "log4j.properties" );
+		}
+		return log;
+	}
+
+	public static void main(String[] args) {
+		System.out.println( "Starting Purchase Oder Client App" );
+		Login pocl = new Login();
+	}
+}

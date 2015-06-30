@@ -1,0 +1,46 @@
+package com.uslc.po.gui.master;
+
+import org.apache.log4j.Logger;
+import org.apache.log4j.PropertyConfigurator;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.layout.FormData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Composite;
+
+public class AboutComposite extends Composite{
+	private MasterCenterComposite parent = null;
+	private Logger log = null;
+	
+	public AboutComposite( MasterCenterComposite composite ){
+		super( composite.getMaster().getHiddenShell(), SWT.BORDER );
+		this.parent = composite;
+		initComposite();
+	}
+	
+	private void initComposite(){
+		FormData data = new FormData( 550, 550);
+		setLayoutData(data);
+		
+		setLayout( new GridLayout( 6, false ) );
+	}
+	
+	public void hide(){
+		clean();
+		this.setParent( getParent().getMaster().getHiddenShell() );
+		this.setVisible(false);
+		getParent().getMaster().getMasterTop().getCancel().setEnabled( false );
+	}
+	private void clean(){
+	}
+	
+	public MasterCenterComposite getParent(){
+		return parent;
+	}
+	private Logger getLog(){
+		if( log == null ){
+			log = Logger.getLogger(AboutComposite.class);
+			PropertyConfigurator.configure("log4j.properties");
+		}
+		return log;
+	}
+}

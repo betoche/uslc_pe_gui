@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+	<project name="uslc Purchase Order" basedir="." default="build">
+		<property name="src.dir" value="src"/>
+		<property name="build.dir" value="bin"/>
+		<property name="name" value="fax"/>
+		
+		<path id="master-classpath">
+			<fileset dir="${}">
+			</fileset>
+		</path>
+	</project>
+
+<!--
+		<property file="build.properties"/>
+		<target name="info">
+			<echo>Apache Ant version is ${ant.version} - You are at ${sitename}</echo>
+		</target>
+		
+		<fileset dir="${src}" casesensitive="yes">
+			<include name="**/*.java"/>
+			
+			<exclude name="**/*Stub*"/>
+		</fileset>
+		
+		<patternset id="java.files.without.stubs">
+			<include name="src/**/*.java"/>
+			<exclude name="src/**/*Stub*"/>
+		</patternset>
+		
+		<fileset dir="${src}" casesensitive="yes">
+			<patternset refid="java.files.without.stubs"/>
+		</fileset>
+		
+		<filelist id="config.files" dir="${webapp.src.folder}">
+			<file name="applicationConfig.xml"/>
+			<file name="faces-config.xml"/>
+			<file name="web.xml"/>
+			<file name="portlet.xml"/>
+		</filelist>
+		
+		<copy>
+			<fileset dir="${releasenotes.dir}" includes="**/*.txt"/>
+			<filterset>
+				<filter token="VERSION" vaue="${current.version}"/>
+			</filterset>
+		</copy>
+-->

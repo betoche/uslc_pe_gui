@@ -1,0 +1,517 @@
+package com.uslc.po.gui.master.catalog;
+
+import java.util.List;
+
+import org.apache.log4j.Logger;
+import org.apache.log4j.PropertyConfigurator;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.MouseAdapter;
+import org.eclipse.swt.events.MouseEvent;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.Font;
+import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.layout.FormData;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Combo;
+import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.MessageBox;
+import org.eclipse.swt.widgets.Table;
+import org.eclipse.swt.widgets.TableColumn;
+import org.eclipse.swt.widgets.TableItem;
+import org.eclipse.swt.widgets.Text;
+
+import com.uslc.po.gui.master.MasterCenterComposite;
+import com.uslc.po.gui.util.ImageUtils;
+import com.uslc.po.gui.util.MyGridData;
+import com.uslc.po.jpa.entity.Color;
+import com.uslc.po.jpa.entity.Item;
+import com.uslc.po.jpa.entity.Size;
+import com.uslc.po.jpa.entity.Upc;
+import com.uslc.po.jpa.logic.ColorRepo;
+import com.uslc.po.jpa.logic.ItemRepo;
+import com.uslc.po.jpa.logic.SizeRepo;
+import com.uslc.po.jpa.logic.UpcRepo;
+import com.uslc.po.jpa.util.Constants;
+import com.uslc.po.jpa.util.UslcJpa;
+
+public class UpcManagerComposite extends Composite {
+	private MasterCenterComposite parent = null;
+	private Label titleLbl = null;
+	private Table upcsTbl = null;
+	private Label infoLbl = null;
+	private Label imageLbl = null;
+	private Label itemLbl = null;
+	private Combo itemsCmb = null;
+	private Label colorLbl = null;
+	private Combo colorsCmb = null;
+	private Label colorItemLbl = null;
+	private Label sizeLbl = null;
+	private Combo sizesCmb = null;
+	private Label upcLbl = null;
+	private Text upcTextTxt = null;
+	private Label enabledLbl = null;
+	private Button enabledCheck = null;
+	private Button actionBtn = null;
+	private Button cancelBtn = null;
+	
+	private Logger log = null;
+	private Upc selectedUpc = null;
+	private boolean editing = false;
+	private final String infoAddText = "Info: Add a new UPC";
+	
+	private GridData labelGd = null;
+	
+	public UpcManagerComposite( MasterCenterComposite composite ){
+		super( composite.getMaster().getHiddenShell(), SWT.NONE );
+		this.parent = composite;
+		initComposite();
+	}
+	
+	private void initComposite(){
+		FormData data = new FormData( 500, 440);
+		setLayoutData(data);
+		
+		setLayout( new GridLayout( 4, false ) );
+		
+		getTitleLbl();
+		getUpcsTbl();
+		getInfoLbl();
+		getImageLbl();
+		getItemLbl();
+		getItemsCmb();
+		getColorLbl();
+		getColorsCmb();
+		getColorItemLbl();
+		getSizeLbl();
+		getSizesCmb();
+		getUpcLbl();
+		getUpcTextTxt();
+		getEnabledLbl();
+		getEnabledCheck();
+		getActionBtn();
+		getCancelBtn();
+		
+		loadValues();
+	}
+	
+	public MasterCenterComposite getParent(){
+		return parent;
+	}
+	
+	public Label getTitleLbl() {
+		if( titleLbl == null ){
+			titleLbl = new Label(this, SWT.NONE);
+			titleLbl.setText( "UPCs" );
+			GridData gd = new GridData( GridData.FILL_HORIZONTAL );
+			gd.grabExcessHorizontalSpace = true;
+			gd.horizontalSpan = 4;
+			titleLbl.setLayoutData(gd);
+			
+			Label horizontalLine = new Label(this, SWT.SEPARATOR | SWT.HORIZONTAL );
+			horizontalLine.setLayoutData(gd);
+		}
+		return titleLbl;
+	}
+	public Table getUpcsTbl() {
+		if( upcsTbl == null ){
+			upcsTbl = new Table(this, SWT.SINGLE);
+			
+			TableColumn id = new TableColumn(upcsTbl, SWT.NONE);
+			TableColumn code = new TableColumn(upcsTbl, SWT.NONE);
+			TableColumn colorItem = new TableColumn(upcsTbl, SWT.NONE);
+			
+			id.setText( "id" );
+			code.setText( "code" );
+			colorItem.setText( "color-item" );
+			
+			id.setWidth(30);
+			code.setWidth(100);
+			colorItem.setWidth(100);
+			
+			upcsTbl.setHeaderVisible( true );
+			
+			GridData gd = new GridData( GridData.FILL_VERTICAL );
+			gd.grabExcessVerticalSpace = true;
+			gd.verticalSpan = 11;
+			upcsTbl.setLayoutData( gd );
+			
+			upcsTbl.addMouseListener(new MouseAdapter() {
+				@Override
+				public void mouseDoubleClick(MouseEvent arg0) {
+					setEditMode();
+				}
+			});
+			
+			GridData data1 = new GridData(GridData.FILL_VERTICAL);
+			data1.verticalSpan = 11;
+			data1.widthHint = 15;
+			Label verticalLine = new Label(this, SWT.SEPARATOR | SWT.VERTICAL);
+			verticalLine.setLayoutData(data1);
+		}
+		return upcsTbl;
+	}
+	
+	public Label getInfoLbl() {
+		if( infoLbl == null ){
+			infoLbl = new Label(this, SWT.NONE);
+			infoLbl.setText( infoAddText );
+			infoLbl.setLayoutData(MyGridData.getDgHorizontalDoubleSpan());
+			Label horizontalLine = new Label(this, SWT.SEPARATOR | SWT.HORIZONTAL );
+			horizontalLine.setLayoutData( MyGridData.getDgHorizontalDoubleSpan() );
+		}
+		return infoLbl;
+	}
+	public Label getImageLbl() {
+		if( imageLbl == null ){
+			imageLbl = new Label(this, SWT.NONE);
+			GridData gd = new GridData(150, 60);
+			gd.horizontalSpan = 2;
+			gd.horizontalAlignment = SWT.CENTER;
+			imageLbl.setLayoutData( gd );
+			
+			Label horizontalLine = new Label(this, SWT.SEPARATOR | SWT.HORIZONTAL );
+			horizontalLine.setLayoutData( MyGridData.getDgHorizontalDoubleSpan() );
+		}
+		return imageLbl;
+	}
+	public Label getItemLbl() {
+		if( itemLbl == null ){
+			itemLbl = new Label(this, SWT.NONE);
+			itemLbl.setText( "item:" );
+			itemLbl.setAlignment( SWT.RIGHT );
+			itemLbl.setLayoutData( getLabelGd() );
+		}
+		return itemLbl;
+	}
+	public Combo getItemsCmb() {
+		if( itemsCmb == null ){
+			itemsCmb = new Combo( this, SWT.DROP_DOWN | SWT.READ_ONLY);
+			
+			GridData gd = new GridData(GridData.FILL_HORIZONTAL);
+			itemsCmb.setLayoutData(gd);
+			
+			itemsCmb.addSelectionListener( new SelectionAdapter() {
+				
+				@Override
+				public void widgetSelected(SelectionEvent arg0) {
+					updateColorItemLabel();
+				}
+
+			} );
+		}
+		return itemsCmb;
+	}
+	public Label getColorLbl() {
+		if( colorLbl == null ){
+			colorLbl = new Label(this, SWT.NONE);
+			colorLbl.setText( "color:" );
+			colorLbl.setLayoutData( getLabelGd() );
+			colorLbl.setAlignment( SWT.RIGHT );
+		}
+		return colorLbl;
+	}
+	public Combo getColorsCmb() {
+		if( colorsCmb == null ){
+			colorsCmb = new Combo( this, SWT.DROP_DOWN | SWT.READ_ONLY);
+			
+			GridData gd = new GridData(GridData.FILL_HORIZONTAL);
+			colorsCmb.setLayoutData(gd);
+			
+			colorsCmb.addSelectionListener( new SelectionAdapter() {
+				
+				@Override
+				public void widgetSelected(SelectionEvent arg0) {
+					updateColorItemLabel();
+				}
+
+			} );
+		}
+		return colorsCmb;
+	}
+	private void updateColorItemLabel() {
+		;
+		Color color = null;
+		try{
+			color = (Color)getColorsCmb().getData(getColorsCmb().getItem( getColorsCmb().getSelectionIndex() ));
+		}catch( IllegalArgumentException e ){
+		}
+		Item item = null;
+		try{
+			item = (Item)getItemsCmb().getData(getItemsCmb().getItem( getItemsCmb().getSelectionIndex() ));
+		}catch( IllegalArgumentException e ){
+		}
+		try{ 
+			getColorItemLbl().setText( color.getName()+"-"+item.getCode() ); 
+		}catch( NullPointerException e ){
+		}
+	}
+
+	public Label getColorItemLbl() {
+		if( colorItemLbl == null ){
+			colorItemLbl = new Label(this, SWT.NONE);
+			colorItemLbl.setText( "[ color-item ]" );
+			colorItemLbl.setAlignment( SWT.CENTER );
+			GridData gd = new GridData( GridData.FILL_HORIZONTAL );
+			gd.grabExcessHorizontalSpace = true;
+			gd.horizontalSpan = 2;
+			gd.horizontalAlignment = SWT.CENTER;
+			gd.widthHint = 150;
+			colorItemLbl.setLayoutData( gd );
+		}
+		return colorItemLbl;
+	}
+	public Label getSizeLbl() {
+		if( sizeLbl == null ){
+			sizeLbl = new Label(this, SWT.NONE);
+			sizeLbl.setText( "size:" );
+			sizeLbl.setLayoutData( getLabelGd() );
+			sizeLbl.setAlignment( SWT.RIGHT );
+		}
+		return sizeLbl;
+	}
+	public Combo getSizesCmb() {
+		if( sizesCmb == null ){
+			sizesCmb = new Combo( this, SWT.DROP_DOWN | SWT.READ_ONLY);
+			
+			GridData gd = new GridData(GridData.FILL_HORIZONTAL);
+			sizesCmb.setLayoutData(gd);
+		}
+		return sizesCmb;
+	}
+	public Label getUpcLbl() {
+		if( upcLbl == null ){
+			upcLbl = new Label(this, SWT.NONE);
+			upcLbl.setText( "upc:" );
+			upcLbl.setLayoutData( getLabelGd() );
+			upcLbl.setAlignment( SWT.RIGHT );
+		}
+		return upcLbl;
+	}
+	public Text getUpcTextTxt() {
+		if( upcTextTxt == null ){
+			upcTextTxt = new Text(this, SWT.NONE);
+			GridData gd = new GridData(GridData.FILL_HORIZONTAL);
+			upcTextTxt.setLayoutData( gd );
+		}
+		return upcTextTxt;
+	}
+	public Label getEnabledLbl() {
+		if( enabledLbl == null ){
+			enabledLbl = new Label(this, SWT.NONE);
+			enabledLbl.setText( "enabled:" );
+			enabledLbl.setLayoutData( getLabelGd() );
+			enabledLbl.setAlignment( SWT.RIGHT );
+		}
+		return enabledLbl;
+	}
+	public Button getEnabledCheck() {
+		if( enabledCheck == null ){
+			enabledCheck = new Button(this, SWT.CHECK);
+		}
+		return enabledCheck;
+	}
+	public Button getActionBtn() {
+		if( actionBtn == null ){
+			actionBtn = new Button(this, SWT.PUSH);
+			actionBtn.setText("add");
+			
+			GridData gd = new GridData();
+			gd.horizontalAlignment = SWT.RIGHT;
+			gd.widthHint = 70;
+			actionBtn.setLayoutData(gd);
+			
+			actionBtn.addSelectionListener(new SelectionAdapter() {
+				@Override
+				public void widgetSelected(SelectionEvent e) {
+					try {
+						performAction();
+					} catch (Exception e1) {
+						getLog().error( "error", e1);
+					}
+				}
+			});
+		}
+		return actionBtn;
+	}
+	public Button getCancelBtn() {
+		if( cancelBtn == null ){
+			cancelBtn = new Button(this, SWT.PUSH);
+			cancelBtn.setText( "cancel" );
+			
+			GridData gd = new GridData();
+			gd.widthHint = 70;
+			gd.horizontalAlignment = SWT.CENTER;
+			cancelBtn.setLayoutData( gd );
+			cancelBtn.addSelectionListener(new SelectionAdapter() {
+				@Override
+				public void widgetSelected(SelectionEvent e) {
+					if( editing ){
+						clean();
+					}else{
+						hide();
+					}
+				}
+			});
+			
+			GridData gd2 = new GridData( GridData.FILL_HORIZONTAL );
+			gd2.grabExcessHorizontalSpace = true;
+			gd2.horizontalSpan = 4;
+			Label horizontalLine = new Label(this, SWT.SEPARATOR | SWT.HORIZONTAL );
+			horizontalLine.setLayoutData(gd2);
+		}
+		return cancelBtn;
+	}
+
+	public Logger getLog(){
+		if( log == null ){
+			log = Logger.getLogger( UpcManagerComposite.class );
+			PropertyConfigurator.configure( "log4j.properties" );
+		}
+		return log;
+	}
+	
+	private GridData getLabelGd(){
+		if( labelGd == null ){
+			labelGd = new GridData( 70, 23 );
+		}
+		return labelGd;
+	}
+
+	private void performAction() throws Exception{
+		Upc upc = null;
+		
+		boolean deleted = !getEnabledCheck().getSelection();
+		String upcCode = getUpcTextTxt().getText();
+		Color color = (Color)getColorsCmb().getData( getColorsCmb().getItem(getColorsCmb().getSelectionIndex()) );
+		Item item = (Item)getItemsCmb().getData( getItemsCmb().getItem(getItemsCmb().getSelectionIndex()) );
+		String colorItem = color.getName()+"-"+item.getCode();
+		Size size = (Size)getSizesCmb().getData( getSizesCmb().getItem(getSizesCmb().getSelectionIndex()) );
+		
+		String successMsg = "";
+		String errorMsg = "";
+		
+		if( editing ){
+			upc = selectedUpc;
+			successMsg = "Upc edited correctly";
+			errorMsg = "There was a problem editing the selected Upc";
+		}else{
+			upc = new Upc();
+			successMsg = "Upc added correctly.";
+			errorMsg = "There was a problem adding the Upc.";
+		}
+		
+		upc.setColorItemCode(colorItem);
+		upc.setDeleted( deleted );
+		upc.setUpcCode(upcCode);
+		upc.setColor(color);
+		upc.setItem(item);
+		upc.setSize(size);
+		
+		UslcJpa jpa = new UslcJpa();
+		int style = SWT.ICON_INFORMATION;
+		MessageBox diag = new MessageBox(this.getShell(), style );
+		diag.setText( Constants.MESSAGE_BOX_DIAG_TITLE.toString() );
+		
+		if( jpa.persist(upc) ){
+			diag.setMessage(successMsg);
+			clean();
+			loadValues();
+		}else{
+			style = SWT.ICON_ERROR;
+			diag.setMessage(errorMsg);
+		}
+		diag.open();
+	}
+	private void setEditMode(){
+		TableItem[] items = getUpcsTbl().getSelection();
+		Upc upc = null;
+		
+		for( TableItem item : items ){
+			upc = (Upc)item.getData();
+		}
+		
+		if( upc!=null ){
+			editing = true;
+			selectedUpc = upc;
+			getItemsCmb().setText( String.valueOf( upc.getItem().getCode() ) );
+			getColorsCmb().setText( upc.getColor().getName() );
+			getSizesCmb().setText( upc.getSize().getWaist() + " x " + upc.getSize().getInseam() );
+			getUpcTextTxt().setText( upc.getUpcCode() );
+			getEnabledCheck().setSelection( !upc.getDeleted() );
+			
+			Image ucpImage = ImageUtils.getBarcodeImage(getDisplay(), upc.getUpcCode());
+			getImageLbl().setImage(ucpImage);
+			getActionBtn().setText("update");
+			
+			getInfoLbl().setText( "UPC["+upc.getUpcCode()+"] - UPDATE" );
+			
+			updateColorItemLabel();
+		}else{
+			editing = false;
+			getLog().info( "upc["+upc+"]" );
+		}
+	}
+	private void clean(){
+		editing = false;
+		selectedUpc = null;
+		getInfoLbl().setText( infoAddText );
+		getImageLbl().setImage(null);
+		loadValues();
+		getColorItemLbl().setText( "[ color-item ]" );
+		getUpcTextTxt().setText("");
+		getEnabledCheck().setSelection(false);
+		getActionBtn().setText( "add" );
+	}
+	public void hide(){
+		clean();
+		this.setParent( getParent().getMaster().getHiddenShell() );
+		this.setVisible(false);
+	}
+	
+	public void loadValues(){
+		getUpcsTbl().removeAll();
+		getItemsCmb().removeAll();
+		getColorsCmb().removeAll();
+		getSizesCmb().removeAll();
+		
+		List<Upc> upcs = UpcRepo.findAll();
+		Font font = new Font(getDisplay(), "Arial", 8, SWT.NORMAL);
+		//getLog().info( "upcs["+upcs+"]" );
+		
+		for (Upc upc : upcs) {
+			TableItem item = new TableItem(getUpcsTbl(), SWT.NONE);
+			
+			if( upc.getDeleted() ){
+				item.setBackground( new org.eclipse.swt.graphics.Color(getDisplay(), 255, 224, 237 ) );
+			}
+			
+			String[] texts = { String.valueOf( upc.getId() ), upc.getUpcCode(), upc.getColorItemCode() };
+			item.setData(upc);
+			item.setText( texts );
+			item.setFont(font);
+		}
+		
+		List<Item> items = ItemRepo.findAll();
+		//getLog().info( "items["+items+"]" );
+		for (Item item : items) {
+			getItemsCmb().add( String.valueOf( item.getCode() ) );
+			getItemsCmb().setData(String.valueOf( item.getCode() ), item);
+		}
+		List<Color> colors = ColorRepo.findAll();
+		//getLog().info( "colors["+colors+"]" );
+		for (Color color : colors) {
+			getColorsCmb().add( String.valueOf( color.getName() ) );
+			getColorsCmb().setData( String.valueOf( color.getName() ), color);
+		}
+		List<Size> sizes = SizeRepo.findAll();
+		//getLog().info( "sizes["+sizes+"]" );
+		for (Size size : sizes) {
+			getSizesCmb().add( String.valueOf( size.getWaist() + " x " + size.getInseam() ) );
+			getSizesCmb().setData( String.valueOf( size.getWaist() + " x " + size.getInseam() ), size);
+		}
+	}
+}

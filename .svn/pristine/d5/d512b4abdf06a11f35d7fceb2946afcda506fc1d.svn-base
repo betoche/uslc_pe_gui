@@ -1,0 +1,430 @@
+package com.uslc.po.gui.master;
+
+import org.apache.log4j.Logger;
+import org.apache.log4j.PropertyConfigurator;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.FocusAdapter;
+import org.eclipse.swt.events.FocusEvent;
+import org.eclipse.swt.events.MouseAdapter;
+import org.eclipse.swt.events.MouseEvent;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.Font;
+import org.eclipse.swt.graphics.FontData;
+import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Group;
+import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Table;
+import org.eclipse.swt.widgets.TableColumn;
+import org.eclipse.swt.widgets.TableItem;
+
+import com.ibm.icu.text.SimpleDateFormat;
+import com.uslc.po.gui.util.PurchaseOrder;
+
+public class MasterLeftComposite extends Composite {
+	private POMaster master = null;
+	private Label purchaseOrderLbl = null;
+	private Table purchaseOrderTbl = null;
+	
+	private Button showPackingDetails = null;
+
+	private Group purchaseOrderInfoGrp = null;
+	private Label refNum = null;
+	private Label deptNum = null;
+	private Label items = null;
+	private Label cartons = null;
+	private Label from = null;
+	private Label to = null;
+	private Label created = null;
+	private Font infoFont = null;
+	private GridData gdValues = null;
+	private Font addressesFont = null;
+	private Logger log = null;
+	
+	private SimpleDateFormat sdf = null;
+	
+	public MasterLeftComposite( POMaster master ){
+		super( master.getShell(), SWT.BORDER );
+		this.master = master;
+		
+		initComposite();
+	}
+	
+	private void initComposite(){
+		GridData data = new GridData(SWT.FILL, SWT.FILL, false, true );
+		data.widthHint = 200;
+		setLayoutData( data );
+		
+		GridLayout layout = new GridLayout();
+		layout.marginTop = 20;
+		setLayout(layout);
+		
+		getPurchaseOrderLbl();
+		getPurchaseOrderTbl();
+		getShowPackingDetails();
+		
+		getPurchaseOrderInfoGrp();
+	}
+	public Label getPurchaseOrderLbl(){
+		if( purchaseOrderLbl == null ){
+			purchaseOrderLbl = new Label(this, SWT.NONE);
+			purchaseOrderLbl.setText( "purchase orders:" );
+		}
+		return purchaseOrderLbl;
+	}
+	public Table getPurchaseOrderTbl(){
+		if( purchaseOrderTbl == null ){
+			purchaseOrderTbl = new Table(this, SWT.SINGLE);
+			
+			GridData data = new GridData(SWT.FILL, SWT.FILL, true, false);
+			data.heightHint = 200;
+			purchaseOrderTbl.setLayoutData(data);
+			
+			TableColumn po = new TableColumn(purchaseOrderTbl, SWT.NONE);
+			TableColumn status = new TableColumn(purchaseOrderTbl, SWT.NONE);
+			
+			po.setText( "po" );
+			status.setText("status");
+			po.setWidth(100);
+			status.setWidth(90);
+			purchaseOrderTbl.setHeaderVisible( true );
+			purchaseOrderTbl.addSelectionListener(new SelectionAdapter() {
+				
+				@Override
+				public void widgetSelected(SelectionEvent arg0) {
+					showPoInfo();
+				}
+			});
+			purchaseOrderTbl.addFocusListener(new FocusAdapter() {
+				
+				@Override
+				public void focusLost(FocusEvent arg0) {
+					TableItem[] items = purchaseOrderTbl.getSelection();
+					
+					if( items!=null ){
+						PurchaseOrder po = null;
+						for( TableItem item : items ){
+							po = ((PurchaseOrder)item.getData());
+						}
+						if( po!=null ){
+							getMaster().getTopComposite().getDeletePo().setEnabled(true);
+						}else{
+							getMaster().getTopComposite().getDeletePo().setEnabled(false);
+						}
+					}else{
+						getMaster().getTopComposite().getDeletePo().setEnabled(false);
+					}
+				}
+			});
+			purchaseOrderTbl.addMouseListener(new MouseAdapter() {
+				@Override
+				public void mouseDoubleClick(MouseEvent arg0) {
+					showPoDetails();
+				}
+			});
+			
+			fillPo();
+		}
+		return purchaseOrderTbl;
+	}
+	public void showPoDetails(){
+		TableItem[] items = getPurchaseOrderTbl().getSelection();
+		PurchaseOrder po = null;
+		for (TableItem ti : items) {
+			po = (PurchaseOrder)ti.getData();
+		}
+		
+		if( po!=null ){
+			getMaster().getCenterComposite().showComposite( getMaster().getCenterComposite().getPurchaseDetailViewer() );
+			getMaster().getCenterComposite().getPurchaseDetailViewer().displayPurchaseDetails(po);
+		}
+	}
+	public Button getShowPackingDetails(){
+		if( showPackingDetails == null ){
+			showPackingDetails = new Button(this, SWT.PUSH);
+			showPackingDetails.setText( "packing" );
+			GridData rightAlign = new GridData(GridData.HORIZONTAL_ALIGN_END);
+			rightAlign.grabExcessHorizontalSpace = true;
+			showPackingDetails.setLayoutData(rightAlign);
+			showPackingDetails.setImage(new Image(getDisplay(), "images/box.png"));
+			showPackingDetails.addSelectionListener(new SelectionAdapter() {
+				
+				@Override
+				public void widgetSelected(SelectionEvent arg0) {
+					showPackingDetail();
+				}
+			});
+			
+			GridData gdHorizontal = new GridData( GridData.FILL_HORIZONTAL );
+			gdHorizontal.grabExcessHorizontalSpace = true;
+			gdHorizontal.heightHint=20;
+			Label horizontaLabel = new Label(this, SWT.SEPARATOR | SWT.HORIZONTAL );
+			horizontaLabel.setLayoutData( gdHorizontal );
+		}
+		return showPackingDetails;
+	}
+	
+	
+	public Group getPurchaseOrderInfoGrp(){
+		if( purchaseOrderInfoGrp == null ){
+			purchaseOrderInfoGrp = new Group( this, SWT.SHADOW_ETCHED_IN );
+			purchaseOrderInfoGrp.setText( "info" );
+
+			GridData data = new GridData(SWT.FILL, SWT.FILL, true, false);
+			data.heightHint = 240;
+			purchaseOrderInfoGrp.setLayoutData(data);
+			
+			GridLayout layout = new GridLayout();
+			layout.marginLeft=0;
+			layout.marginRight=0;
+			layout.marginWidth=0;
+			layout.horizontalSpacing=0;
+			layout.makeColumnsEqualWidth=true;
+			layout.numColumns=2;
+			purchaseOrderInfoGrp.setLayout( layout );
+			
+			//getRefNum().setFont(getInfoFont());
+			
+			//GridData gd = new GridData(GridData.HORIZONTAL_ALIGN_END, GridData.VERTICAL_ALIGN_BEGINNING, true, false );
+			GridData gd = new GridData();
+			gd.widthHint=60;
+			
+			Label d = new Label( purchaseOrderInfoGrp, SWT.NONE );
+			d.setText( "dept#:" );
+			d.setLayoutData(gd);
+			d.setAlignment( SWT.RIGHT );
+			d.setFont(getInfoFont());
+			getDeptNum().setFont(getInfoFont());
+			
+			Label i = new Label( purchaseOrderInfoGrp, SWT.NONE );
+			i.setText( "items:" );
+			i.setLayoutData(gd);
+			i.setAlignment( SWT.RIGHT );
+			i.setFont(getInfoFont());
+			getItems().setFont(getInfoFont());
+			
+			Label c = new Label( purchaseOrderInfoGrp, SWT.NONE );
+			c.setText( "cartons:" );
+			c.setLayoutData(gd);
+			c.setAlignment( SWT.RIGHT );
+			c.setFont(getInfoFont());
+			getCartons().setFont(getInfoFont());
+			
+			Label f = new Label( purchaseOrderInfoGrp, SWT.NONE );
+			f.setText( "from:" );
+			f.setLayoutData(gd);
+			f.setAlignment( SWT.RIGHT );
+			f.setFont(getInfoFont());
+			getFrom().setFont(getAddressesFont());
+			
+			Label t = new Label( purchaseOrderInfoGrp, SWT.NONE );
+			t.setText( "to:" );
+			t.setLayoutData(gd);
+			t.setAlignment( SWT.RIGHT );
+			t.setFont(getInfoFont());
+			getTo().setFont(getAddressesFont());
+			
+			Label cr = new Label( purchaseOrderInfoGrp, SWT.NONE );
+			cr.setText( "created:" );
+			cr.setLayoutData(gd);
+			cr.setAlignment( SWT.RIGHT );
+			cr.setFont(getInfoFont());
+			getCreated().setFont(getInfoFont());
+		}
+		return purchaseOrderInfoGrp;
+	}
+	public Label getRefNum(){
+		if( refNum == null ){
+			refNum = new Label(purchaseOrderInfoGrp, SWT.NONE);
+			refNum.setText("po#");
+			refNum.setAlignment( SWT.RIGHT );
+			GridData refNumGd = new GridData(GridData.FILL, GridData.VERTICAL_ALIGN_BEGINNING, true, false);
+			refNumGd.horizontalSpan=2;
+			refNum.setLayoutData(refNumGd);
+		}
+		return refNum;
+	}
+	public Label getDeptNum() {
+		if( deptNum == null ){
+			deptNum = new Label(purchaseOrderInfoGrp, SWT.NONE);
+			deptNum.setText( "" );
+			deptNum.setAlignment( SWT.LEFT );
+			deptNum.setLayoutData(getGdValues());
+		}
+		return deptNum;
+	}
+	public Label getItems() {
+		if( items == null ){
+			items = new Label(purchaseOrderInfoGrp, SWT.NONE);
+			items.setText( "" );
+			items.setAlignment( SWT.LEFT );
+			items.setLayoutData(getGdValues());
+		}
+		return items;
+	}
+	public Label getCartons() {
+		if( cartons == null ){
+			cartons = new Label(purchaseOrderInfoGrp, SWT.NONE);
+			cartons.setText( "" );
+			cartons.setAlignment( SWT.LEFT );
+			cartons.setLayoutData(getGdValues());
+		}
+		return cartons;
+	}
+	public Label getFrom() {
+		if( from == null ){
+			from = new Label(purchaseOrderInfoGrp, SWT.NONE | SWT.WRAP );
+			from.setText( "" );
+			from.setAlignment( SWT.RIGHT );
+			GridData gd = new GridData();
+			gd.horizontalAlignment = GridData.FILL;
+			gd.grabExcessHorizontalSpace=true;
+			gd.horizontalSpan=2;
+			gd.heightHint=50;
+			from.setLayoutData(gd);
+			from.setFont( getAddressesFont() );
+		}
+		return from;
+	}
+	public Label getTo() {
+		if( to == null ){
+			to = new Label(purchaseOrderInfoGrp, SWT.NONE | SWT.WRAP);
+			to.setText( "" );
+			to.setAlignment( SWT.RIGHT );
+			GridData gd = new GridData();
+			gd.horizontalAlignment = GridData.FILL;
+			gd.grabExcessHorizontalSpace=true;
+			gd.horizontalSpan=2;
+			gd.heightHint=40;
+			to.setLayoutData(gd);
+			to.setFont( getAddressesFont() );
+		}
+		return to;
+	}
+	public Label getCreated() {
+		if( created == null ){
+			created = new Label(purchaseOrderInfoGrp, SWT.NONE);
+			created.setText( "" );
+			created.setAlignment( SWT.LEFT );
+			created.setLayoutData(getGdValues());
+		}
+		return created;
+	}
+	public GridData getGdValues(){
+		if( gdValues == null ){
+			gdValues = new GridData(GridData.FILL_HORIZONTAL);
+			gdValues.grabExcessHorizontalSpace=true;
+			/*gdValues.horizontalAlignment=GridData.FILL;
+			gdValues.grabExcessHorizontalSpace=true;
+			gdValues.widthHint=140;*/
+		}
+		return gdValues;
+	}
+	public Font getInfoFont(){
+		if( infoFont == null ){
+			infoFont = new Font(getDisplay(), "Segoe UI", 8, SWT.NORMAL);
+		}
+		return infoFont;
+	}
+	public Font getAddressesFont(){
+		if( addressesFont == null ){
+			FontData[] fd = getDisplay().getSystemFont().getFontData();
+			for (FontData f : fd) {
+				getLog().info( "f[" + f.getName() + "," + f.getStyle() + "," + f.getHeight() + "]" );
+				addressesFont = new Font(getDisplay(), f.getName(), 6, f.getStyle());
+			}
+		}
+		return addressesFont;
+	}
+	public void fillPo(){
+		PurchaseOrder[] pos = PurchaseOrder.getPurchaseOrders();
+		getPurchaseOrderTbl().removeAll();
+		try{
+			Font f = new Font(getDisplay(), "Segoe UI", 8, SWT.NORMAL);
+			for (PurchaseOrder po : pos) {
+				TableItem ti = new TableItem(getPurchaseOrderTbl(), SWT.NONE);
+				ti.setFont( f );
+				String[] texts = { po.getCode(), po.getStatus() };
+				ti.setData( po );
+				ti.setText( texts );
+			}
+		}catch( Exception e ){
+			e.printStackTrace();
+		}
+	}
+	public void showPackingDetail(){
+		TableItem[] items = getPurchaseOrderTbl().getSelection();
+		PurchaseOrder po = null;
+		for (TableItem ti : items) {
+			po = (PurchaseOrder)ti.getData();
+		}
+		
+		if( po!=null ){
+			getMaster().getCenterComposite().showComposite( getMaster().getCenterComposite().getPackingDetailViewer() );
+			getMaster().getCenterComposite().getPackingDetailViewer().displayPackingDetails(po);
+		}
+	}
+	public void showPoInfo(){
+		TableItem[] items = getPurchaseOrderTbl().getSelection();
+		PurchaseOrder po = null;
+		for (TableItem ti : items) {
+			po = (PurchaseOrder)ti.getData();
+		}
+		
+		if( po!=null ){
+			getPurchaseOrderInfoGrp().setText( "info: " + po.getPo().getReferenceNumber() );
+			com.uslc.po.jpa.entity.PurchaseOrder p = po.getPo();
+			getRefNum().setText( p.getReferenceNumber() );
+			getDeptNum().setText( String.valueOf( p.getDepartmentNumber() ) );
+			getItems().setText( String.valueOf( p.getTotalItems() ) );
+			getCartons().setText( String.valueOf( p.getTotalCartons() ) );
+			getFrom().setText( p.getShipFrom() );
+			getTo().setText( p.getShipTo() );
+			getCreated().setText( getSdf().format( p.getTimestamp() ) );
+			getMaster().getTopComposite().getEditPo().setEnabled(true);
+			getMaster().getTopComposite().getPrint().setEnabled(true);
+			getMaster().getTopComposite().getDeletePo().setEnabled(true);
+		}else{
+			getPurchaseOrderInfoGrp().setText( "info" );
+			getRefNum().setText( "" );
+			getDeptNum().setText( "" );
+			getItems().setText( "" );
+			getCartons().setText( "" );
+			getFrom().setText( "" );
+			getTo().setText( "" );
+			getCreated().setText( "" );
+			getMaster().getTopComposite().getEditPo().setEnabled(false);
+			getMaster().getTopComposite().getPrint().setEnabled(false );
+			getMaster().getTopComposite().getDeletePo().setEnabled(false);
+		}
+	}
+	public SimpleDateFormat getSdf(){
+		if( sdf == null ){
+			sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+		}
+		return sdf;
+	}
+	public POMaster getMaster(){
+		return master;
+	}
+	private Logger getLog(){
+		if( log == null ){
+			log = Logger.getLogger( MasterLeftComposite.class );
+			PropertyConfigurator.configure( "log4j.properties" );
+		}
+		return log;
+	}
+	public void clean(){
+		getDeptNum().setText("");
+		getItems().setText("");
+		getCartons().setText("");
+		getFrom().setText("");
+		getTo().setText("");
+		getCreated().setText("");
+		getPurchaseOrderTbl().setSelection(-1);
+	}
+}

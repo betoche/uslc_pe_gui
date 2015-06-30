@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 3.5.0-->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="perry_ellis_4_x_2" language="groovy" pageWidth="328" pageHeight="184" orientation="Landscape" columnWidth="288" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20">
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="One Empty Record"/>
+	<property name="com.jaspersoft.studio.unit." value="inch"/>
+	<parameter name="barcode" class="java.awt.Image"/>
+	<parameter name="id" class="java.lang.String"/>
+	<parameter name="style_id" class="java.lang.String"/>
+	<parameter name="size" class="java.lang.String"/>
+	<parameter name="qty" class="java.lang.String"/>
+	<parameter name="case_number" class="java.lang.String"/>
+	<parameter name="color" class="java.lang.String"/>
+	<queryString>
+		<![CDATA[]]>
+	</queryString>
+	<summary>
+		<band height="143">
+			<textField>
+				<reportElement x="12" y="0" width="88" height="22">
+					<property name="local_mesure_unitheight" value="inch"/>
+					<property name="com.jaspersoft.studio.unit.height" value="inch"/>
+				</reportElement>
+				<textElement verticalAlignment="Bottom" lineSpacing="Single">
+					<font fontName="Arial" size="18"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{style_id}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="100" y="0" width="40" height="22">
+					<property name="local_mesure_unitheight" value="inch"/>
+					<property name="com.jaspersoft.studio.unit.height" value="inch"/>
+				</reportElement>
+				<textElement textAlignment="Center" verticalAlignment="Bottom" lineSpacing="Single">
+					<font fontName="Arial" size="18"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{color}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="140" y="0" width="30" height="22">
+					<property name="local_mesure_unitheight" value="inch"/>
+					<property name="com.jaspersoft.studio.unit.height" value="inch"/>
+				</reportElement>
+				<textElement textAlignment="Center" verticalAlignment="Bottom" lineSpacing="Single">
+					<font fontName="Arial" size="18"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{id}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="170" y="0" width="60" height="22">
+					<property name="local_mesure_unitheight" value="inch"/>
+					<property name="com.jaspersoft.studio.unit.height" value="inch"/>
+				</reportElement>
+				<textElement textAlignment="Center" verticalAlignment="Bottom" lineSpacing="Single" markup="none">
+					<font fontName="Arial" size="18"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{size}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="230" y="0" width="48" height="22">
+					<property name="local_mesure_unitheight" value="inch"/>
+					<property name="com.jaspersoft.studio.unit.height" value="inch"/>
+				</reportElement>
+				<textElement textAlignment="Right" verticalAlignment="Bottom" lineSpacing="Single">
+					<font fontName="Arial" size="18"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{qty}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true">
+				<reportElement x="10" y="99" width="268" height="44"/>
+				<textElement textAlignment="Center" lineSpacing="Single">
+					<font fontName="Arial" size="26" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{case_number}]]></textFieldExpression>
+			</textField>
+			<image>
+				<reportElement x="10" y="22" width="269" height="77"/>
+			</image>
+		</band>
+	</summary>
+</jasperReport>

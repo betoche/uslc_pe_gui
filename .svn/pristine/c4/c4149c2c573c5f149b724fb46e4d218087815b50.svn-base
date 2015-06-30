@@ -1,0 +1,7 @@
+package com.uslc.po.gui.master.interfaces;
+
+public interface LiveDataAccessLifeCicle {
+	public void loadEntities();
+	public void displayValues();
+	public void clean();
+}

@@ -1,0 +1,14 @@
+number-of-copies=1
+defaul-printer-name=
+show-print-dialog=false
+auto-print=true
+
+custom-label-files=
+
+preticketed-label-file=reports/carton_ticket_preticketed.jrxml
+no-preticketed-label-file=reports/carton_ticket_no_preticketed.jrxml
+
+sticker-label-file=reports/polybag_sticker.jrxml
+
+blank-label-file=reports/blank_page.jrxml
+blank-sticker-file=reports/blank_polybag_sticker.jrxml

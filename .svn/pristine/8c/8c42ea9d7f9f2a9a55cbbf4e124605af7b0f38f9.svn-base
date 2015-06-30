@@ -1,0 +1,11 @@
+package com.uslc.gui;
+
+import org.eclipse.swt.widgets.Shell;
+
+public class FontsManager {
+	private Shell shell = null;
+	
+	public FontsManager( Shell shell ) {
+		this.shell = shell;
+	}
+}

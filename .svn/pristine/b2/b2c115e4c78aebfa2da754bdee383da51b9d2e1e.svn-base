@@ -1,0 +1,55 @@
+package com.uslc.po.gui.master.catalog;
+
+import org.eclipse.swt.widgets.Composite;
+
+import com.uslc.po.gui.master.MasterCenterComposite;
+
+public class FormCenterMaster extends Composite {
+	private MasterCenterComposite parent = null;
+	
+	public FormCenterMaster(MasterCenterComposite parent, int style) {
+		super(parent.getMaster().getHiddenShell(), style);
+		this.parent = parent;
+	}
+	
+	public MasterCenterComposite getParent(){
+		return parent;
+	}
+	
+	private void clean(){
+	}
+	public void cleanInfoText(){
+		getParent().getMaster().cleanInfoText();
+	}
+	public void setInfoText( InfoForm info ) {
+		getParent().getMaster().getRightComposite().setInfoText(info);
+	}
+	public void hide(){
+		clean();
+		this.setParent( getParent().getMaster().getHiddenShell() );
+		this.setVisible(false);
+		
+	}
+	
+	public class InfoForm {
+		private String title = "";
+		private String desc = "";
+		private String[] features = null;
+		
+		public InfoForm( String title, String desc, String[] features ) {
+			this.title = title;
+			this.desc = desc;
+			this.features = features;
+		}
+
+		public String getTitle() {
+			return title;
+		}
+		public String getDesc() {
+			return desc;
+		}
+		public String[] getFeatures() {
+			return features;
+		}
+	}
+}

@@ -1,0 +1,106 @@
+package com.uslc.gui;
+
+import org.apache.log4j.Logger;
+import org.apache.log4j.PropertyConfigurator;
+import org.eclipse.swt.graphics.Color;
+import org.eclipse.swt.graphics.Font;
+import org.eclipse.swt.graphics.FontData;
+
+public class SystemVariables {
+	private Font xxSmallFont = null;
+	private Font xSmallFont = null;
+	private Font smallFont = null;
+	private Font normalFont = null;
+	private Font largeFont = null;
+	private Font xLargeFont = null;
+	
+	private Color readyColor = null;
+	private Color missingColor = null;
+	
+	private SystemCommons uslcSystem = null;
+	
+	private Logger log = null;
+	
+	public SystemVariables( SystemCommons uslcSystem ) {
+		this.uslcSystem = uslcSystem;
+	}
+	
+	private SystemCommons getUslcSystem() {
+		return uslcSystem;
+	}
+	
+	private Font getFont( int addition ) {
+		Font f = null;
+		for( FontData fd : getUslcSystem().getFont().getFontData() ) {
+			getLog().info( "current-font[name:"+fd.getName()+",height:"+fd.getHeight()+",style:"+fd.getStyle()+"]" );
+			f = new Font( getUslcSystem().getDisplay(), fd.getName(), fd.getHeight()+addition, fd.getStyle() );
+		}
+		return f;
+	}
+	public Font getXxxSmallFont() {
+		if( xxSmallFont == null ) {
+			xxSmallFont = getFont( -4 );
+		}
+		return xxSmallFont;
+	}
+	public Font getXxSmallFont() {
+		if( xxSmallFont == null ) {
+			xxSmallFont = getFont( -3 );
+		}
+		return xxSmallFont;
+	}
+	public Font getXSmallFont() {
+		if( xSmallFont == null ) {
+			xSmallFont = getFont( -2 );
+		}
+		return xSmallFont;
+	}
+	public Font getSmallFont() {
+		if( smallFont == null ) {
+			smallFont = getFont( -1 );
+		}
+		return smallFont;
+	}
+	public Font getNormalFont() {
+		if( normalFont == null ) {
+			normalFont = getFont( 0 );
+		}
+		return normalFont;
+	}
+	public Font getLargeFont() {
+		if( largeFont == null ) {
+			largeFont = getFont( 1 );
+		}
+		return largeFont;
+	}
+	public Font getxLargeFont() {
+		if( largeFont == null ) {
+			largeFont = getFont( 2 );
+		}
+		return xLargeFont;
+	}
+	
+	private Logger getLog(){
+		if( log == null ) {
+			log = Logger.getLogger( SystemVariables.class );
+			PropertyConfigurator.configure( "log4j.properties" );
+		}
+		return log;
+	}
+	public static void main( String[] args ) {
+		
+	}
+	public org.eclipse.swt.graphics.Color getMissingColor() {
+		if( missingColor == null ) {
+			missingColor = new Color( getUslcSystem().getDisplay().getCurrent(), 240, 220, 242 );
+		}
+		return missingColor;
+	}
+	public org.eclipse.swt.graphics.Color getReadyColor() {
+		if( readyColor == null ) {
+			readyColor = new Color(getUslcSystem().getDisplay().getCurrent(), 220,231,242);
+			//readyColor = getUslcSystem().getDisplay().getSystemColor( SWT.COLOR_BLUE );
+		}
+		return readyColor;
+	}
+}

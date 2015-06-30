@@ -1,0 +1,129 @@
+package com.uslc.po.gui.master;
+
+import org.apache.log4j.Logger;
+import org.apache.log4j.PropertyConfigurator;
+import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Shell;
+
+import com.uslc.gui.SystemCommons;
+import com.uslc.po.gui.master.catalog.FormCenterMaster.InfoForm;
+import com.uslc.po.gui.master.interfaces.SystemCommonMethods;
+import com.uslc.po.jpa.entity.User;
+
+public class Master extends SystemCommons implements SystemCommonMethods {
+	private Logger log = null;
+	private Shell hiddenShell = null;
+	private MasterMenu menuBar = null;
+	private MasterTopComposite masterTop = null;
+	private MasterLeftComposite masterLeft = null;
+	private MasterCenterComposite masterCenter = null;
+	private MasterRightComposite masterRight = null;
+	private MasterBottomComposite masterBottom = null;
+	
+	public Master(Shell shell, Display display, User user) {
+		super(shell, display, user);
+		getLog().info( Master.class + " constructor called." );
+	}
+
+	@Override
+	public void setSize() {
+		super.setSize( 1050, 800 );
+		getLog().info( "current size["+getSize().x+","+getSize().y+"]" );
+	}
+
+	@Override
+	public void initGui() {
+		GridLayout gridLayout = new GridLayout( 3, false );
+		gridLayout.horizontalSpacing = 2;
+		gridLayout.marginBottom = 2;
+		gridLayout.marginTop = 2;
+		gridLayout.marginLeft = 2;
+		gridLayout.marginRight = 2;
+		super.setLayout( gridLayout );
+		setMenuBar( getMenuBar() );
+		super.setText("purchase order master - USLC Apparel");
+		Image img = new Image(getDisplay(), "images/po.ico");
+		super.setImage(img);
+		
+		getMasterTop();
+		getMasterLeft();
+		getMasterCenter();
+		getMasterRight();
+		getMasterBottom();
+	}
+
+	public MasterTopComposite getMasterTop() {
+		if( masterTop == null ) {
+			masterTop = new MasterTopComposite(this);
+		}
+		return masterTop;
+	}
+	public MasterLeftComposite getMasterLeft() {
+		if( masterLeft == null ) {
+			masterLeft = new MasterLeftComposite(this);
+		}
+		return masterLeft;
+	}
+	public MasterCenterComposite getMasterCenter() {
+		if( masterCenter == null ) {
+			masterCenter = new MasterCenterComposite(this);
+		}
+		return masterCenter;
+	}
+	public MasterRightComposite getMasterRight() {
+		if( masterRight == null ) {
+			masterRight = new MasterRightComposite(this);
+		}
+		return masterRight;
+	}
+	public MasterBottomComposite getMasterBottom() {
+		if( masterBottom == null ) {
+			masterBottom = new MasterBottomComposite(this);
+		}
+		return masterBottom;
+	}
+
+	public void hideAllComposites(){
+		try{getMasterCenter().getSizeManager().hide();}catch(Exception e){}
+		try{getMasterCenter().getColorManager().hide();}catch(Exception e){}
+		try{getMasterCenter().getUpcManager().hide();}catch(Exception e){}
+		try{getMasterCenter().getNewPurchaseOrder().hide();}catch(Exception e){}
+		try{getMasterCenter().getItemManager().hide();}catch(Exception e){}
+		try{getMasterCenter().getPackingDetailViewer().hide();}catch(Exception e){}
+		try{getMasterCenter().getPackingDetailViewer().hide();}catch(Exception e){}
+		try{getMasterCenter().getPurchaseDetailViewer().hide();}catch(Exception e){}
+		try{getMasterCenter().getUserManager().hide();}catch(Exception e){}
+		try{getMasterCenter().getPurchaseOrderByUserManager().hide();}catch(Exception e){}
+		try{getMasterCenter().getReportsManagerCentre().hide();}catch(Exception e){}
+		try{getMasterRight().getNewPurchaseOrderDetail().hide();}catch(Exception e){}
+	}
+	public void setInfoText( InfoForm info ){
+		getMasterRight().setInfoText(info);
+	}
+	public Shell getHiddenShell(){
+		if( hiddenShell == null ){
+			hiddenShell = new Shell();
+		}
+		return hiddenShell;
+	}
+	public void cleanInfoText(){
+		getMasterRight().setInfoText(null);
+	}
+	
+	@Override
+	public Logger getLog() {
+		if( log == null ) {
+			log = Logger.getLogger( Master.class );
+			PropertyConfigurator.configure( "log4j.properties" );
+		}
+		return log;
+	}
+	public MasterMenu getMenuBar() {
+		if( menuBar == null ) {
+			menuBar = new MasterMenu(this);
+		}
+		return menuBar;
+	}
+}

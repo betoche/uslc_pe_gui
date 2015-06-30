@@ -1,0 +1,371 @@
+package com.uslc.gui;
+
+import java.awt.Image;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.HashMap;
+import java.util.Properties;
+
+import javax.print.PrintService;
+import javax.print.attribute.HashPrintRequestAttributeSet;
+import javax.print.attribute.PrintRequestAttributeSet;
+import javax.print.attribute.standard.Copies;
+import javax.print.attribute.standard.MediaPrintableArea;
+import javax.print.attribute.standard.MediaSize;
+import javax.print.attribute.standard.MediaSizeName;
+
+import net.sf.jasperreports.engine.JREmptyDataSource;
+import net.sf.jasperreports.engine.JRException;
+import net.sf.jasperreports.engine.JRExporterParameter;
+import net.sf.jasperreports.engine.JasperCompileManager;
+import net.sf.jasperreports.engine.JasperFillManager;
+import net.sf.jasperreports.engine.JasperPrint;
+import net.sf.jasperreports.engine.JasperPrintManager;
+import net.sf.jasperreports.engine.JasperReport;
+import net.sf.jasperreports.engine.export.JRPrintServiceExporter;
+import net.sf.jasperreports.engine.export.JRPrintServiceExporterParameter;
+import net.sf.jasperreports.engine.util.JRFontNotFoundException;
+
+import org.apache.log4j.Logger;
+import org.apache.log4j.PropertyConfigurator;
+
+import com.uslc.po.gui.util.ImageUtils;
+import com.uslc.po.jpa.entity.Carton;
+import com.uslc.po.jpa.entity.PackingDetail;
+
+public class TicketPrinterPlatform {
+	private SystemCommons systemCommons = null;
+	private String propsFileName = "config/printing.properties";
+	
+	private int defaultNumberOfCopies = 0;
+	private String defaultPrinterName = "";
+	private boolean showPrintDialog = false;
+	private boolean autoPrint = false;
+	
+	private String[] customLabelFiles = null;
+	
+	//	Perry Ellis jasper report for the label
+	private String perryEllisLabelFile = ""; 
+	private JasperReport perryEllisLabelJr = null;
+	private JasperPrint perryEllisLabelJp = null;
+//	Perry Ellis jasper report for the label
+	
+	private String preticketedLabelFile = "";
+	private String noPreticketedLabelFile = "";
+	
+	private String stickerLabelFile = "";
+	
+	private String blankLabelFile = "";
+	private String blankStickerLabelFile = "";
+	
+	private JasperReport preticketedLabelJr = null;
+	private JasperReport noPreticketedLabelJr = null;
+	private JasperReport stickerLabelJr = null;
+	private JasperReport blankLabelJr = null;
+	private JasperReport blankStickerLabelJr = null;
+	
+	private JasperPrint labelJp = null;
+	private JasperPrint stickerLabelJp = null;
+	
+	private Logger log = null;
+	
+	public TicketPrinterPlatform( SystemCommons systemCommons, String propsFileName ) {
+		this.propsFileName = propsFileName;
+		this.systemCommons = systemCommons;
+		InputStream input = null;
+		Properties props = null;
+		try {
+			input = new FileInputStream( new File( propsFileName ) );
+			props = new Properties();
+			props.load(input);
+			
+			defaultNumberOfCopies = Integer.parseInt( props.getProperty( "number-of-copies", "1").trim() );
+			defaultPrinterName = props.getProperty( "defaul-printer-name", "" ).trim();
+			showPrintDialog = Boolean.getBoolean( props.getProperty( "show-print-dialog", "false" ).trim() );
+			autoPrint = Boolean.getBoolean( props.getProperty( "auto-print", "true" ).trim() );
+			
+			customLabelFiles = props.getProperty( "custom-label-files", "" ).trim().split( "|" );
+			
+			preticketedLabelFile = props.getProperty( "preticketed-label-file", "reports/carton_ticket_preticketed.jrxml" ).trim();
+			noPreticketedLabelFile = props.getProperty( "no-preticketed-label-file", "reports/carton_ticket_no_preticketed.jrxml" ).trim();
+			
+			stickerLabelFile = props.getProperty( "sticker-label-file", "reports/polybag_sticker.jrxml" ).trim();
+			
+			blankLabelFile = props.getProperty( "blank-label-file", "reports/blank_page.jrxml" ).trim();
+			blankStickerLabelFile = props.getProperty( "blank-sticker-file", "reports/blank_polybag_sticker.jrxml" );
+		} catch (FileNotFoundException e) {
+			getLog().error( "constructor", e );
+		} catch (IOException e) {
+			getLog().error( "constructor", e );
+		} finally {
+			try {
+				input.close();
+			} catch (IOException e) {
+				getLog().error( "constructor", e );
+			}
+		}
+	}
+
+	public int getDefaultNumberOfCopies() {
+		return defaultNumberOfCopies;
+	}
+	public void setDefaultNumberOfCopies(int defaultNumberOfCopies) {
+		this.defaultNumberOfCopies=defaultNumberOfCopies;
+	}
+	public String getDefaultPrinterName() {
+		return defaultPrinterName;
+	}
+	public void setDefaultPrinterName(String defaultPrinterName ) {
+		this.defaultPrinterName = defaultPrinterName;
+	}
+	public boolean isShowPrintDialog() {
+		return showPrintDialog;
+	}
+	public boolean isAutoPrint() {
+		return autoPrint;
+	}
+	public void setAutoPrint(boolean autoPrint) {
+		this.autoPrint=autoPrint;
+	}
+	public String[] getCustomLabelFiles() {
+		return customLabelFiles;
+	}
+	public String getPerryEllisLabelFile() {
+		return perryEllisLabelFile;
+	}
+	public String getPreticketedLabelFile() {
+		return preticketedLabelFile;
+	}
+	public String getNoPreticketedLabelFile() {
+		return noPreticketedLabelFile;
+	}
+	public String getStickerLabelFile() {
+		return stickerLabelFile;
+	}
+	public String getBlankLabelFile() {
+		return blankLabelFile;
+	}
+	public String getBlankStickerLabelFile() {
+		return blankStickerLabelFile;
+	}
+
+	public JasperReport getPerryEllisLabelJr() throws JRException {
+		if( perryEllisLabelJr == null ) {
+			perryEllisLabelJr = JasperCompileManager.compileReport( getPerryEllisLabelFile() );
+		}
+		return perryEllisLabelJr;
+	}
+	public JasperReport getPreticketedLabelJr() throws JRException {
+		if( preticketedLabelJr == null ) {
+			preticketedLabelJr = JasperCompileManager.compileReport( getPreticketedLabelFile() );
+		}
+		return preticketedLabelJr;
+	}
+	public JasperReport getNoPreticketedLabelJr() throws JRException {
+		if( noPreticketedLabelJr == null ) {
+			noPreticketedLabelJr = JasperCompileManager.compileReport( getNoPreticketedLabelFile() );
+		}
+		return noPreticketedLabelJr;
+	}
+	public JasperReport getStickerLabelJr() throws JRException {
+		if( stickerLabelJr == null ) {
+			stickerLabelJr = JasperCompileManager.compileReport( getStickerLabelFile() );
+		}
+		return stickerLabelJr;
+	}
+	public JasperReport getBlanckLabelJr() throws JRException {
+		if( blankLabelJr == null ) {
+			blankLabelJr = JasperCompileManager.compileReport( getBlankLabelFile() );
+		}
+		return blankLabelJr;
+	}
+	public JasperReport getBlankStickerLabelJr() throws JRException {
+		if( blankStickerLabelJr == null ) {
+			blankStickerLabelJr = JasperCompileManager.compileReport( getBlankStickerLabelFile() );
+		}
+		return blankStickerLabelJr;
+	}
+	
+	public JasperPrint getPerryEllisLabelJp( Image barcode, String styleId, String color, String id, String size, String qty, String caseNumber, boolean empty ) throws JRException {
+		HashMap hm = new HashMap();
+		if( perryEllisLabelJp == null ) {
+			if( empty ) {
+				perryEllisLabelJp = JasperFillManager.fillReport(getBlanckLabelJr(),hm,new JREmptyDataSource());
+			} else {
+				hm.put( "barcode", barcode );
+				hm.put( "style_id", styleId );
+				hm.put( "color", color );
+				hm.put( "id", id );
+				hm.put( "size", size );
+				hm.put( "qty", qty );
+				hm.put( "case_number", caseNumber );
+				
+				try{
+					perryEllisLabelJp = JasperFillManager.fillReport(getPerryEllisLabelJr(),hm,new JREmptyDataSource());
+					if( perryEllisLabelJp.getPages().size()>1 )perryEllisLabelJp.getPages().remove(1);
+					getLog().info( "number of pages[" + perryEllisLabelJp.getPages().size() + "] - topMargin[" + perryEllisLabelJp.getTopMargin() + "]" );
+				}catch( JRFontNotFoundException e ){
+					e.printStackTrace();
+				}
+				getLog().info( "jasperPrint[ " + perryEllisLabelJp + " ]" );
+			}
+		}
+		return perryEllisLabelJp;
+	}
+	public JasperPrint getLabelJp( PackingDetail pd ) throws JRException {
+		HashMap hm = new HashMap();
+		if( pd==null ){
+			labelJp = JasperFillManager.fillReport(getBlanckLabelJr(),hm,new JREmptyDataSource());
+		}else{
+			hm.put( "carton" , String.valueOf( pd.getSku() ) );
+			//hm.put( "barcode_number" , pd.getPurchaseOrderDetail().getUpc().getUpcCode() );
+			
+			//hm.put( "barcode" , ImageUtils.createResizedCopy( ImageUtils.getAwtBarcodeImage( pd.getPurchaseOrderDetail().getUpc().getUpcCode() ), 105, 81, true) );
+			hm.put( "barcode" , ImageUtils.getAwtBarcodeImage( pd.getPurchaseOrderDetail().getUpc().getUpcCode() ) );
+			hm.put( "dept" , String.valueOf( pd.getPurchaseOrderDetail().getPurchaseOrder().getDepartmentNumber() ) );
+			hm.put( "item" , String.valueOf( pd.getPurchaseOrderDetail().getUpc().getItem().getCode() ) );
+			hm.put( "color_number" , String.valueOf( pd.getPurchaseOrderDetail().getUpc().getColor().getNumber() ) );
+			String size = "";
+			if( pd.getPurchaseOrderDetail().getPurchaseOrder().getReferenceNumber().endsWith( "0011" ) ){
+				size = String.valueOf( pd.getPurchaseOrderDetail().getUpc().getSize().getWaist() );
+			}else{
+				size = String.valueOf( pd.getPurchaseOrderDetail().getUpc().getSize().getWaist() + "x" + pd.getPurchaseOrderDetail().getUpc().getSize().getInseam() );
+			}
+			hm.put( "size" , size );
+			hm.put( "color_name" , pd.getPurchaseOrderDetail().getUpc().getColor().getName() );
+			hm.put( "po_number" , pd.getPurchaseOrderDetail().getPurchaseOrder().getReferenceNumber() );
+			hm.put("qty", String.valueOf( pd.getQuantity() ) );
+			hm.put("country", getSystemCommons().getCommonPurchaseOrderValues().getDefaultCountryOfOrigin() );
+			hm.put("to", pd.getPurchaseOrderDetail().getPurchaseOrder().getShipTo() );
+			hm.put("from", pd.getPurchaseOrderDetail().getPurchaseOrder().getShipFrom() );
+			
+			try{
+				labelJp = JasperFillManager.fillReport(pd.getPurchaseOrderDetail().getPreticketed()?getPreticketedLabelJr():getNoPreticketedLabelJr(),hm,new JREmptyDataSource());
+				if( labelJp.getPages().size()>1 )labelJp.getPages().remove(1);
+				getLog().info( "number of pages[" + labelJp.getPages().size() + "] - topMargin[" + labelJp.getTopMargin() + "]" );
+			}catch( JRFontNotFoundException e ){
+				e.printStackTrace();
+			}
+			getLog().info( "jasperPrint[ " + labelJp + " ]" );
+		}
+		return labelJp;
+	}
+	public JasperPrint getStickerLabelJp( PackingDetail pd ) throws JRException {
+		HashMap hm = new HashMap();
+		if( pd==null ){
+			stickerLabelJp = JasperFillManager.fillReport(getBlankStickerLabelJr(),  hm, new JREmptyDataSource());
+		}else{
+			hm.put( "item" , String.valueOf( pd.getPurchaseOrderDetail().getUpc().getItem().getCode() ) );
+			hm.put( "department" , String.valueOf( pd.getPurchaseOrderDetail().getPurchaseOrder().getDepartmentNumber() ) );
+			hm.put( "color" , String.valueOf( pd.getPurchaseOrderDetail().getUpc().getColor().getNumber() ) );
+			String size = "";
+			if( pd.getPurchaseOrderDetail().getPurchaseOrder().getReferenceNumber().endsWith( "0011" ) ){
+				size = String.valueOf( pd.getPurchaseOrderDetail().getUpc().getSize().getWaist() );
+			}else{
+				size = String.valueOf( pd.getPurchaseOrderDetail().getUpc().getSize().getWaist() + "x" + pd.getPurchaseOrderDetail().getUpc().getSize().getInseam() );
+			}
+			hm.put( "size" , size );
+			hm.put( "color_name" , pd.getPurchaseOrderDetail().getUpc().getColor().getName() );
+			hm.put( "upc_image" , ImageUtils.getAwtBarcodeImage( pd.getPurchaseOrderDetail().getUpc().getUpcCode() ) );
+			
+			try{
+				stickerLabelJp = JasperFillManager.fillReport(getStickerLabelJr(),hm,new JREmptyDataSource());
+				if( stickerLabelJp.getPages().size()>1 )stickerLabelJp.getPages().remove(1);
+				getLog().info( "number of pages[" + stickerLabelJp.getPages().size() + "] - topMargin[" + stickerLabelJp.getTopMargin() + "]" );
+			}catch( JRFontNotFoundException e ){
+				e.printStackTrace();
+			}
+		}
+		getLog().info( "polybagJasperPrint[ " + stickerLabelJp + " ]" );
+		
+		return stickerLabelJp;
+	}
+	
+	public SystemCommons getSystemCommons() {
+		return systemCommons;
+	}
+
+	public void printCartonTicket(Carton carton, PrintService service, boolean displayPrintDialog ) {
+		getLog().info( "printing carton with upc: " + carton.getUpcCode() );
+		try {
+			if( service!=null ){
+				PrintRequestAttributeSet printRequestAttributeSet = new HashPrintRequestAttributeSet();
+				MediaSizeName mediaSizeName = MediaSize.findMedia( 4, 4, MediaPrintableArea.INCH );
+			    printRequestAttributeSet.add( mediaSizeName );
+				printRequestAttributeSet.add( new Copies( 1 ) );
+				JRPrintServiceExporter exporter = new JRPrintServiceExporter();
+				exporter.setParameter( JRExporterParameter.JASPER_PRINT, getLabelJp(  carton.getPackingDetail() ) );
+				exporter.setParameter( JRPrintServiceExporterParameter.PRINT_SERVICE, service );
+			    exporter.setParameter( JRPrintServiceExporterParameter.DISPLAY_PAGE_DIALOG, Boolean.FALSE );
+			    exporter.setParameter( JRPrintServiceExporterParameter.DISPLAY_PRINT_DIALOG, displayPrintDialog );
+			    exporter.exportReport();
+			}else{
+				JasperPrintManager.printReport( getLabelJp(  carton.getPackingDetail() ), true );
+			}
+		} catch (JRException e) {
+			getLog().error( "error printing the ticket", e );
+			getSystemCommons().getErrorBox( e.getMessage() );
+		}
+	}
+	
+	private Logger getLog() {
+		if( log == null ) {
+			log = Logger.getLogger( TicketPrinterPlatform.class );
+			PropertyConfigurator.configure( "log4j.properties" );
+		}
+		return log;
+	}
+
+	public boolean saveTicketChanges() {
+		boolean success = false;
+		
+		InputStream input = null;
+		Properties props = null;
+		FileOutputStream out;
+		try {
+			input = new FileInputStream( new File( propsFileName ) );
+			props = new Properties();
+			props.load(input);
+			
+			out = new FileOutputStream( new File( propsFileName ) );
+			props = new Properties();
+			
+			props.setProperty( "number-of-copies", String.valueOf( getDefaultNumberOfCopies() ) );
+			props.setProperty( "defaul-printer-name", getDefaultPrinterName() );
+			props.setProperty( "show-print-dialog", String.valueOf( isShowPrintDialog() ) );
+			props.setProperty( "auto-print", String.valueOf( isAutoPrint() ) ) ;
+			
+			String customLabelFilesStr = "";
+			for( int i = 0 ; getCustomLabelFiles()!=null && i<getCustomLabelFiles().length ; i++  ){
+				customLabelFilesStr += getCustomLabelFiles()[i];
+				if( i < getCustomLabelFiles().length ) {
+					customLabelFilesStr += "|";
+				}
+			}
+			
+			props.setProperty( "custom-label-files", customLabelFilesStr );customLabelFiles = props.getProperty( "custom-label-files", "" ).trim().split( "|" );
+			
+			props.setProperty( "preticketed-label-file", getPreticketedLabelFile());
+			props.setProperty( "no-preticketed-label-file", getNoPreticketedLabelFile());
+			
+			props.setProperty( "sticker-label-file", getStickerLabelFile());
+			
+			props.setProperty( "blank-label-file", getBlankLabelFile());
+			props.setProperty( "blank-sticker-file", getBlankStickerLabelFile() );
+			
+			props.store(out, null);
+			out.close();
+			success = true;
+		} catch (FileNotFoundException e) {
+			getLog().info( "error saving master properties", e );
+		} catch (IOException e) {
+			getLog().info( "error saving master properties", e );
+		}
+		
+		return success;
+	}
+}

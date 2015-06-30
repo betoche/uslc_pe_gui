@@ -1,0 +1,91 @@
+package com.uslc.po.gui.master;
+
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Group;
+import org.eclipse.swt.widgets.Label;
+
+import com.uslc.po.gui.master.interfaces.MasterCompositeInterface;
+
+public class MasterRightComposite extends Composite implements MasterCompositeInterface {
+	private POMaster master = null;
+	private NewPurchaseOrderDetailComposite poDetail = null;
+	private Group infoComposite = null;
+	private Label infoText = null;
+	
+	public MasterRightComposite( POMaster master ){
+		super( master.getShell(), SWT.BORDER );
+		this.master = master;
+		
+		initComposite();
+	}
+	
+	private void initComposite(){
+		GridData data = new GridData(SWT.FILL, SWT.FILL, false, true );
+		data.widthHint = 200;
+		setLayoutData( data );
+		
+		GridLayout layout = new GridLayout();
+		layout.marginTop = 20;
+		setLayout(layout);
+		getInfoComposite();
+	}
+	
+	public POMaster getMaster(){
+		return master;
+	}
+
+	public NewPurchaseOrderDetailComposite getNewPurchaseOrderDetail() {
+		if( poDetail == null ){
+			poDetail = new NewPurchaseOrderDetailComposite(this);
+		}
+		return poDetail;
+	}
+	public Group getInfoComposite(){
+		if( infoComposite == null ){
+			infoComposite = new Group(this, SWT.NONE);
+			infoComposite.setText("info");
+			GridData gd = new GridData(GridData.FILL, GridData.FILL, true, true );
+			infoComposite.setLayoutData(gd);
+			GridLayout gl = new GridLayout();
+			gl.numColumns=1;
+			infoComposite.setLayout(gl);
+			
+			getInfoText();
+			getInfoText().setParent(infoComposite);
+		}
+		return infoComposite;
+	}
+	public void hideAllComposites(){
+		try{getNewPurchaseOrderDetail().hide();}catch(Exception e){e.printStackTrace();}
+	}
+	public void showComposite( Composite composite ){
+		hideAllComposites();
+		
+		composite.setParent( this );
+		composite.moveAbove(getInfoComposite());
+		getInfoComposite().moveBelow(composite);
+		composite.setVisible( true );
+		composite.layout();
+		this.layout();
+		getMaster().getShell().layout();
+	}
+	public Label getInfoText(){
+		if( infoText == null ){
+			infoText = new Label(getInfoComposite(), SWT.BORDER);
+			GridData gd = new GridData();
+			gd.horizontalAlignment = GridData.FILL_HORIZONTAL;
+			gd.verticalAlignment = GridData.FILL_VERTICAL;
+			gd.grabExcessHorizontalSpace=true;
+			gd.grabExcessVerticalSpace=true;
+			infoText.setLayoutData(gd);
+			infoText.setText("");
+		}
+		return infoText;
+	}
+	public void setInfoText( String infoText ){
+		getInfoText().setText(infoText);
+	}
+}

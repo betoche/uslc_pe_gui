@@ -1,0 +1,219 @@
+package com.uslc.po.gui.master;
+
+import java.io.IOException;
+
+import org.apache.log4j.Logger;
+import org.apache.log4j.PropertyConfigurator;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.graphics.Rectangle;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.MessageBox;
+import org.eclipse.swt.widgets.Monitor;
+import org.eclipse.swt.widgets.Shell;
+
+import com.uslc.po.gui.master.catalog.FormCenterMaster.InfoForm;
+import com.uslc.po.gui.util.ConfirmCloseListener;
+import com.uslc.po.gui.util.Master;
+import com.uslc.po.jpa.entity.User;
+import com.uslc.po.jpa.logic.UserType;
+import com.uslc.po.jpa.util.Constants;
+import com.uslc.po.jpa.util.UslcJpa;
+
+public class POMaster {
+	private Monitor monitor = null;
+	private Display display = null;
+	private Shell hiddenShell = null;
+	private Shell shell = null;
+	private MasterMenu menu = null;
+	private GridLayout gridLayout = null;
+	private MasterTopComposite topComposite = null;
+	private MasterLeftComposite leftComposite = null;
+	private MasterCenterComposite centerComposite = null;
+	private MasterRightComposite rightComposite = null;
+	private MasterBottomComposite bottomComposite = null;
+	private Master master = null;
+	private User currUser = null;
+	
+	private Logger log = null;
+	
+	public POMaster( Shell shell, Display display, User user ){
+		this.display = display;
+		this.currUser = user;
+		getLog().info( POMaster.class + " constructor has been called++" );
+		shell.dispose();
+		initMasterForm();
+		
+	}
+	public void setLastAction( String text, Composite composite ){
+		getBottomComposite().setLastAction(text, composite);
+	}
+	private void initMasterForm(){
+		centerUI();
+		getShell().open();
+		
+		while( !getShell().isDisposed() ){
+			if( !getDisplay().readAndDispatch() ){
+				getDisplay().sleep();
+			}
+		}
+		getDisplay().dispose();
+	}
+	
+	public Display getDisplay(){
+		if( display == null ){
+			display = new Display();
+		}
+		return display;
+	}
+	public Monitor getMonitor() {
+		if( monitor == null ){
+			monitor = getDisplay().getPrimaryMonitor();
+		}
+		return monitor;
+	}
+	public Shell getShell(){
+		if( shell == null ){
+			shell = new Shell( getDisplay() );
+			shell.setSize( 1050, 800 );
+			shell.setLayout( getGridLayout() );
+			shell.setMenuBar( getMenu().getBar() );
+			shell.setText("purchase order master - USLC Apparel");
+			shell.addListener( SWT.Close, new ConfirmCloseListener(this) );
+			Image img = new Image(getDisplay(), "images/po.ico");
+			shell.setImage(img);
+			try {
+				shell.setFont( getMaster().getDefaultMasterFont() );
+			} catch (IOException e) {
+				getLog().error( "Error in getShell method", e );
+			}
+			
+			getTopComposite();
+			getLeftComposite();
+			getCenterComposite();
+			getRightComposite();
+			getBottomComposite();
+			//getColorManager();
+			
+			getShell().layout();
+			getCurentUser().setActive(true);
+			UslcJpa jpa = new UslcJpa();
+			try {
+				jpa.persist( getCurentUser() );
+			} catch (Exception e) {
+				MessageBox msg = new MessageBox(new Shell(), SWT.ICON_ERROR);
+				msg.setText( Constants.MESSAGE_BOX_DIAG_TITLE.toString() );
+				msg.setMessage( e.getMessage() );
+				getLog().error( "error", e);
+			}
+		}
+		return shell;
+	}
+	public MasterBottomComposite getBottomComposite(){
+		if( bottomComposite == null ){
+			bottomComposite = new MasterBottomComposite(this);
+		}
+		return bottomComposite;
+	}
+	public MasterRightComposite getRightComposite() {
+		if( rightComposite == null ){
+			rightComposite = new MasterRightComposite(this);
+		}
+		return rightComposite;
+	}
+	public MasterCenterComposite getCenterComposite() {
+		if( centerComposite == null ){
+			centerComposite = new MasterCenterComposite(this);
+		}
+		return centerComposite;
+	}
+	public MasterTopComposite getTopComposite(){
+		if( topComposite == null ){
+			topComposite = new MasterTopComposite( this );
+		}
+		return topComposite;
+	}
+	public MasterLeftComposite getLeftComposite(){
+		if( leftComposite == null ){
+			leftComposite = new MasterLeftComposite(this);
+		}
+		return leftComposite;
+	}
+	public GridLayout getGridLayout(){
+		if( gridLayout == null ){
+			gridLayout = new GridLayout( 3, false );
+			gridLayout.horizontalSpacing = 2;
+			gridLayout.marginBottom = 2;
+			gridLayout.marginTop = 2;
+			gridLayout.marginLeft = 2;
+			gridLayout.marginRight = 2;
+		}
+		return gridLayout;
+	}
+	public MasterMenu getMenu() {
+		if( menu == null ){
+			menu = new MasterMenu(this);
+		}
+		return menu;
+	}
+	public Shell getHiddenShell(){
+		if( hiddenShell == null ){
+			hiddenShell = new Shell();
+		}
+		return hiddenShell;
+	}
+	private void centerUI(){
+		Rectangle bounds = getMonitor().getBounds();
+		Rectangle rect = getShell().getBounds();
+		
+		int x = bounds.x + (bounds.width - rect.width)/2;
+		int y = bounds.y + (bounds.height - rect.height )/2;
+		
+		getShell().setLocation( x, y );
+	}
+	public static void main(String[] args) {
+		User user = new User();
+		user.setUserType(UserType.ADMIN.getId());
+		POMaster master = new POMaster( null, null, user );
+	}
+	public Master getMaster() throws IOException {
+		if( master == null ){
+			master = new Master(this);
+		}
+		return master;
+	}
+	private Logger getLog(){
+		if( log == null ){
+			log = Logger.getLogger( POMaster.class );
+			PropertyConfigurator.configure( "log4j.properties" );
+		}
+		return log;
+	}
+	public User getCurentUser(){
+		return currUser;
+	}
+
+	public void hideAllComposites(){
+		try{getCenterComposite().getSizeManager().hide();}catch(Exception e){}
+		try{getCenterComposite().getColorManager().hide();}catch(Exception e){}
+		try{getCenterComposite().getUpcManager().hide();}catch(Exception e){}
+		try{getCenterComposite().getNewPurchaseOrder().hide();}catch(Exception e){}
+		try{getCenterComposite().getItemManager().hide();}catch(Exception e){}
+		try{getCenterComposite().getPackingDetailViewer().hide();}catch(Exception e){}
+		try{getCenterComposite().getPackingDetailViewer().hide();}catch(Exception e){}
+		try{getCenterComposite().getPurchaseDetailViewer().hide();}catch(Exception e){}
+		try{getCenterComposite().getUserManager().hide();}catch(Exception e){}
+		try{getCenterComposite().getPurchaseOrderByUserManager().hide();}catch(Exception e){}
+		try{getCenterComposite().getReportsManagerCentre().hide();}catch(Exception e){}
+		try{getRightComposite().getNewPurchaseOrderDetail().hide();}catch(Exception e){}
+	}
+	
+	public void setInfoText( InfoForm info ){
+		getRightComposite().setInfoText(info);
+	}
+	public void cleanInfoText(){
+		getRightComposite().setInfoText(null);
+	}
+}

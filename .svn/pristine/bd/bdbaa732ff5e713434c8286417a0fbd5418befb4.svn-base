@@ -1,0 +1,108 @@
+package com.uslc.gui;
+
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.graphics.Rectangle;
+import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.MessageBox;
+import org.eclipse.swt.widgets.Shell;
+
+import com.uslc.po.gui.util.ConfirmCloseListener;
+import com.uslc.po.jpa.entity.User;
+import com.uslc.po.jpa.util.Constants;
+
+public abstract class SystemCommons extends Shell {
+	private TicketPrinterPlatform tpp = null;
+	private FontsManager fonts = null;
+	private CommonPurchaseOrderValues cpov = null;
+	private LiveDataAccess lda = null;
+	private SystemVariables sv = null;
+	private User user = null;
+	private MessageBox errorBox = null;
+	
+	public SystemCommons( Shell shell, Display display, User user ) {
+		super( display, shell.getStyle() );
+		super.setSize( shell.getSize() );
+		this.user = user;
+		for( Control kid : shell.getChildren() ) {
+			kid.dispose();
+		}
+		setSize();
+		
+		Rectangle bounds = display.getPrimaryMonitor().getBounds();
+		Rectangle rect = getBounds();
+		
+		int x = bounds.x + (bounds.width - rect.width)/2;
+		int y = bounds.y + (bounds.height - rect.height )/2;
+		
+		setLocation( x, y );
+		
+		initGui();
+		
+		addListener( SWT.Close, new ConfirmCloseListener(this) );
+		
+		layout();
+		
+		shell.dispose();
+		
+		try{
+			open();
+			layout();
+			while (!isDisposed()) {
+				if (!getDisplay().readAndDispatch()) {
+					getDisplay().sleep();
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	public abstract void setSize();
+	public abstract void initGui();
+	public TicketPrinterPlatform getTicketPrinter() {
+		if( tpp == null ) {
+			tpp = new TicketPrinterPlatform();
+		}
+		return tpp;
+	}
+	public FontsManager getFonts() {
+		if( fonts == null ) {
+			fonts = new FontsManager( this );
+		}
+		return fonts;
+	}
+	public CommonPurchaseOrderValues getCommonPurchaseOrderValues() {
+		if( cpov == null ) {
+			cpov = new CommonPurchaseOrderValues();
+		}
+		return cpov;
+	}
+	public LiveDataAccess getLiveDataAccess() {
+		if( lda == null ) {
+			lda = new LiveDataAccess();
+		}
+		return lda;
+	}
+	public SystemVariables getSystemVariables() {
+		if( sv == null ) {
+			sv = new SystemVariables();
+		}
+		return sv;
+	}
+
+	public MessageBox getErrorBox( String message ){
+		if( errorBox == null ) {
+			errorBox = new MessageBox( getShell(), SWT.ICON_ERROR );
+			errorBox.setText( Constants.MESSAGE_BOX_DIAG_TITLE.toString() );
+		}
+		return errorBox;
+	}
+	
+	public User getUser() {
+		return user;
+	}
+	
+	@Override
+	protected void checkSubclass() {
+	}
+}

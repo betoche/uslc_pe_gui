@@ -1,0 +1,122 @@
+package com.uslc.po.gui.util;
+
+import javax.print.Doc;
+import javax.print.DocFlavor;
+import javax.print.PrintService;
+import javax.print.PrintServiceLookup;
+import javax.print.attribute.HashPrintRequestAttributeSet;
+import javax.print.attribute.PrintRequestAttributeSet;
+
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.graphics.GC;
+import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.graphics.ImageData;
+import org.eclipse.swt.printing.PrintDialog;
+import org.eclipse.swt.printing.Printer;
+import org.eclipse.swt.printing.PrinterData;
+import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Shell;
+
+import com.uslc.gui.SystemCommons;
+
+public class PrintingUtils {
+	private DocFlavor flavor = null;
+	private Doc doc = null;
+	private PrinterData data = null;
+	private PrintService[] services = null;
+	private PrintService defaultService = null;
+	private PrintDialog printDialog = null;
+	private SystemCommons systemCommons = null;
+	private Shell shell = null;
+	
+	public PrintingUtils( SystemCommons systemCommons ){
+		this.systemCommons = systemCommons;
+	}
+	public PrintingUtils( Shell shell ) {
+		this.shell= shell;
+	}
+	public PrinterData getPrinterData(){
+		if( data == null ){
+			data = new PrinterData();
+			data.copyCount=1;
+			data.orientation=PrinterData.LANDSCAPE;
+		}
+		return data;
+	}
+	public PrintDialog getPrintDialog(){
+		if( printDialog == null ){
+			printDialog = new PrintDialog(getShell(), SWT.BORDER); 
+		}
+		return printDialog;
+	}
+	public SystemCommons getSystemCommons(){
+		return systemCommons;
+	}
+	public Shell getShell() {
+		if( systemCommons!=null ) {
+			return systemCommons;
+		} else {
+			return shell;
+		}
+	}
+	public PrintService[] getServices(){
+		if( services == null ){
+			PrintRequestAttributeSet aset = new HashPrintRequestAttributeSet();
+			services = PrintServiceLookup.lookupPrintServices(getFlavor(), aset);
+		}
+		return services;
+	}
+	public DocFlavor getFlavor(){
+		if( flavor == null ){
+			flavor = DocFlavor.INPUT_STREAM.AUTOSENSE;
+		}
+		return flavor;
+	}
+	public PrintService getDefaultService(){
+		if( defaultService == null ){
+			for (PrintService service : getServices() ) {
+				if( getServices()!=null && getServices().length>0 && !getSystemCommons().getTicketPrinter().getDefaultPrinterName().isEmpty() ){
+					if( service.getName().compareTo( getSystemCommons().getTicketPrinter().getDefaultPrinterName() ) == 0 ){
+						defaultService = service;
+						break;
+					}
+				}
+			}
+		}
+		return defaultService;
+	}
+	
+	public void printSWTImage( PrinterData data, ImageData[] image, String jobName ) {
+		if( image.length > 0 && data!=null ){
+			
+			Printer printer = new Printer(data);
+			if( printer.startJob( jobName ) ){
+				if( printer.startPage() ){
+					GC gc = new GC( printer );
+					Image printerImage = new Image(printer, image[0]);
+					gc.drawImage(printerImage, image[0].x, image[0].y);
+					
+					printerImage.dispose();
+					gc.dispose();
+					printer.endPage();
+				}
+			}
+			printer.endJob();
+			printer.dispose();
+		}
+	}
+	public static void main(String[] args) {
+		Display display = new Display();
+		Shell shell = new Shell(display);
+		Image img = ImageUtils.getBarcodeImage(display, "410013940956");
+		
+		PrintingUtils printing = new PrintingUtils( shell );
+		
+		PrinterData data = printing.getPrintDialog().open();
+		if( data == null ){
+			return;
+		}else{
+			printing.printSWTImage(data, new ImageData[]{img.getImageData()}, "test upc printing");
+		}
+	}
+}

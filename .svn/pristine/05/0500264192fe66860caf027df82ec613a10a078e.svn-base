@@ -1,0 +1,6 @@
+db-host=db
+db-name=uslc
+db-user=root
+db-pass=
+db-port=3306
+jdbc-driver=com.mysql.jdbc.Driver

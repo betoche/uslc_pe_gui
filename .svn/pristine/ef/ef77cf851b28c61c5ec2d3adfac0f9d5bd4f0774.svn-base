@@ -1,0 +1,183 @@
+package com.uslc.po.gui.master;
+
+import java.net.ConnectException;
+import java.util.List;
+
+import org.apache.log4j.Logger;
+import org.apache.log4j.PropertyConfigurator;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.SWTException;
+import org.eclipse.swt.custom.CLabel;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Link;
+
+import com.mysql.jdbc.exceptions.jdbc4.CommunicationsException;
+import com.uslc.po.jpa.entity.User;
+import com.uslc.po.jpa.logic.UserRepo;
+
+public class MasterBottomComposite extends Composite {
+	private POMaster master = null;
+	private CLabel sessionInfo = null;
+	private Label usersInfo = null;
+	private Link lastAction = null;
+	private ClientUpdater updater = null;
+	private Composite lastOpenedComposite = null;
+	
+	private Logger log = null;
+	
+	public MasterBottomComposite( POMaster master ){
+		super( master.getShell(), SWT.BORDER );
+		this.master = master;
+		
+		initComposite();
+	}
+	
+	private void initComposite(){
+		GridData data = new GridData(GridData.FILL_HORIZONTAL );
+		data.heightHint = 25;
+		data.horizontalSpan = 3;
+		setLayoutData( data );
+		
+		GridLayout layout = new GridLayout( 3, false );
+		layout.verticalSpacing = SWT.FILL;
+		layout.marginBottom=0;
+		layout.marginTop=0;
+		layout.marginLeft=10;
+		layout.marginRight=10;
+		layout.marginWidth=0;
+		layout.marginHeight=0;
+		setLayout(layout);
+		
+		getSessionInfo();
+		getUsersInfo();
+		getLastAction();
+		
+		getUpdater();
+	}
+	
+	public void setLastAction( String text, Composite composite ){
+		setLastOpenedComposite(composite);
+		getLastAction().setText( "<a>"+text+"</a>" );
+	}
+	public void setLastOpenedComposite( Composite composite ){
+		this.lastOpenedComposite = composite;
+	}
+	public Composite getLastOpenedComposite(){
+		return this.lastOpenedComposite;
+	}
+	
+	public CLabel getSessionInfo(){
+		if( sessionInfo == null ){
+			sessionInfo = new CLabel(this, SWT.NONE);
+			sessionInfo.setImage( new Image(getDisplay(), "images/user.png") );
+			sessionInfo.setText( "user:["+getMaster().getCurentUser().getFirstName()+" "+getMaster().getCurentUser().getLastName()+"]" );
+			
+			GridData data = new GridData(SWT.FILL, SWT.FILL, false, true );
+			data.horizontalAlignment=SWT.LEFT;
+			data.verticalAlignment=SWT.CENTER;
+			data.widthHint = 200;
+			sessionInfo.setLayoutData( data );
+		}
+		return sessionInfo;
+	}
+	public Label getUsersInfo(){
+		if( usersInfo == null ){
+			usersInfo = new Label(this, SWT.NONE);
+			usersInfo.setText("clients[0] = {active: 0, inactive: 0}");
+			usersInfo.setAlignment( SWT.CENTER );
+			GridData data = new GridData(SWT.FILL, SWT.FILL, true, true );
+			data.horizontalAlignment=SWT.CENTER;
+			data.verticalAlignment=SWT.CENTER;
+			usersInfo.setLayoutData( data );
+		}
+		return usersInfo;
+	}
+	public Link getLastAction(){
+		if( lastAction == null ){
+			lastAction = new Link(this, SWT.NONE);
+			lastAction.setText("<a>last action</a>");
+			lastAction.addSelectionListener( new SelectionAdapter(){
+				@Override
+				public void widgetSelected(SelectionEvent e) {
+					getMaster().getCenterComposite().showComposite( getLastOpenedComposite() );
+					getMaster().getCenterComposite();
+					getMaster().getShell().layout();
+				}
+			});
+			//lastAction.setAlignment( SWT.RIGHT );
+			
+			GridData data = new GridData(SWT.FILL, SWT.FILL, false, true );
+			data.horizontalAlignment=SWT.RIGHT;
+			data.verticalAlignment=SWT.CENTER;
+			data.widthHint = 200;
+			lastAction.setLayoutData( data );
+		}
+		return lastAction;
+	}
+	private ClientUpdater getUpdater(){
+		if( updater == null ){
+			updater = new ClientUpdater();
+			updater.start();
+		}
+		return updater;
+	}
+	private POMaster getMaster(){
+		return master;
+	}
+	public synchronized void update(final String value ) {
+		//getLog().info( "updating... " + value );
+        if (getDisplay() == null || getDisplay().isDisposed()) 
+            return;
+        getDisplay().asyncExec(new Runnable() {
+
+            public void run() {
+            	getUsersInfo().setText(value);
+            	getShell().layout();
+            }
+        });
+
+    }
+	public class ClientUpdater extends Thread {
+		@Override
+		public void run() {
+			try {
+				while( true ){
+					Thread.sleep(5000);
+					List<User> users = UserRepo.findAllClients(true);
+					int total = users.size();
+					int active = 0;
+					int inactive = 0;
+					
+					for (User user : users) {
+						if( user.isActive() ){
+							active++;
+						}else{
+							inactive++;
+						}
+					}
+					update("clients["+total+"] = [active: "+active+", inactive: "+inactive+"]");
+				}
+			} catch (InterruptedException e) {
+				getLog().error( "error", e);
+			} catch (SWTException e){} catch (CommunicationsException e) {
+				getLog().error( "error", e);
+			} catch (ConnectException e) {
+				getLog().error( "error", e);
+			}
+		}
+	}
+	
+	private Logger getLog(){
+		if( log == null ){
+			log = Logger.getLogger( MasterBottomComposite.class );
+			PropertyConfigurator.configure( "log4j.properties" );
+		}
+		return log;
+	}
+}

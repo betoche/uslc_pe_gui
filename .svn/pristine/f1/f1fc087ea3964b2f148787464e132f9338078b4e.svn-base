@@ -1,0 +1,1031 @@
+package com.uslc.po.gui.client;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+
+import javax.print.PrintService;
+import javax.print.attribute.HashPrintRequestAttributeSet;
+import javax.print.attribute.PrintRequestAttributeSet;
+import javax.print.attribute.standard.Copies;
+import javax.print.attribute.standard.MediaPrintableArea;
+import javax.print.attribute.standard.MediaSize;
+import javax.print.attribute.standard.MediaSizeName;
+
+import net.sf.jasperreports.engine.JREmptyDataSource;
+import net.sf.jasperreports.engine.JRException;
+import net.sf.jasperreports.engine.JRExporterParameter;
+import net.sf.jasperreports.engine.JasperCompileManager;
+import net.sf.jasperreports.engine.JasperFillManager;
+import net.sf.jasperreports.engine.JasperPrint;
+import net.sf.jasperreports.engine.JasperPrintManager;
+import net.sf.jasperreports.engine.JasperReport;
+import net.sf.jasperreports.engine.export.JRPrintServiceExporter;
+import net.sf.jasperreports.engine.export.JRPrintServiceExporterParameter;
+import net.sf.jasperreports.engine.util.JRFontNotFoundException;
+
+import org.apache.log4j.Logger;
+import org.apache.log4j.PropertyConfigurator;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.events.TraverseEvent;
+import org.eclipse.swt.events.TraverseListener;
+import org.eclipse.swt.layout.FormAttachment;
+import org.eclipse.swt.layout.FormData;
+import org.eclipse.swt.layout.FormLayout;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Combo;
+import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Group;
+import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.ProgressBar;
+import org.eclipse.swt.widgets.Shell;
+import org.eclipse.swt.widgets.Spinner;
+import org.eclipse.swt.widgets.TabFolder;
+import org.eclipse.swt.widgets.TabItem;
+import org.eclipse.swt.widgets.Table;
+import org.eclipse.swt.widgets.TableColumn;
+import org.eclipse.swt.widgets.TableItem;
+import org.eclipse.swt.widgets.Text;
+import org.eclipse.wb.swt.SWTResourceManager;
+
+import com.jasperassistant.designer.viewer.ViewerComposite;
+import com.uslc.gui.SystemCommons;
+import com.uslc.po.gui.logic.ClientLogic;
+import com.uslc.po.gui.master.interfaces.SystemCommonMethods;
+import com.uslc.po.gui.util.ImageUtils;
+import com.uslc.po.gui.util.Master;
+import com.uslc.po.gui.util.PrintingUtils;
+import com.uslc.po.jpa.comparator.PackageDetailComparator;
+import com.uslc.po.jpa.entity.Carton;
+import com.uslc.po.jpa.entity.PackingDetail;
+import com.uslc.po.jpa.entity.PurchaseOrder;
+import com.uslc.po.jpa.entity.PurchaseOrderDetail;
+import com.uslc.po.jpa.entity.User;
+import com.uslc.po.jpa.logic.UserRepo;
+
+import org.eclipse.swt.custom.ScrolledComposite;
+
+public class Client extends SystemCommons implements SystemCommonMethods {
+	private User user = null;
+	private com.uslc.po.gui.logic.ClientLogic client = null;
+	private Table poDetailTbl;
+	private Table packingDetailTbl;
+	private Combo purchaseOrderCbx;
+	private Logger log = null;
+	private Combo sizeCbx;
+	private Combo colorCbx;
+	private Combo itemCbx;
+	private Table scannedItemsTbl;
+	private Text scannedBarTxt;
+	private ViewerComposite polybagViewer = null;
+	private ViewerComposite ticketViewer = null;
+	private Composite printComposite = null;
+	private Button btnPrintTicket = null;
+	private Button btnPrintSmall = null;
+	
+	public ViewerComposite getPolybagViewer() {
+		if( polybagViewer == null ){
+			polybagViewer = new ViewerComposite( getGrpTicketsComposite(), SWT.NONE);
+			GridData gd_ticketViewer = new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1);
+			gd_ticketViewer.heightHint = 150;
+			gd_ticketViewer.widthHint = 200;
+			polybagViewer.setLayoutData(gd_ticketViewer);
+		}
+		return polybagViewer;
+	}
+	public ViewerComposite getTicketViewer() {
+		if( ticketViewer == null ){
+			Composite printComposite = new Composite(grpTicketsComposite, SWT.NONE);
+			printComposite.setLayout(new GridLayout(1, false));
+			GridData gd_printComposite = new GridData(SWT.RIGHT, SWT.FILL, true, true, 1, 1);
+			gd_printComposite.widthHint = 90;
+			printComposite.setLayoutData(gd_printComposite);
+			
+			ticketViewer = new ViewerComposite( getGrpTicketsComposite(), SWT.NONE);
+			GridData gd_polybagViewer = new GridData(SWT.FILL, SWT.FILL, true, true, 2, 1);
+			gd_polybagViewer.heightHint = 200;
+			gd_polybagViewer.widthHint = 300;
+			ticketViewer.setLayoutData(gd_polybagViewer);
+		}
+		return ticketViewer;
+	}
+	public Button getBtnPrintSmall() {
+		if( btnPrintSmall == null ) {
+			btnPrintSmall = new Button(printComposite, SWT.NONE);
+			btnPrintSmall.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, true, true, 1, 1));
+			btnPrintSmall.setText("print small");
+		}
+		return btnPrintSmall;
+	}
+	public Composite getPrintComposite() {
+		if( printComposite == null ) {
+			printComposite = new Composite(grpTicketsComposite, SWT.NONE);
+			printComposite.setLayout(new GridLayout(1, false));
+			GridData gd_printComposite = new GridData(SWT.RIGHT, SWT.FILL, true, true, 1, 1);
+			gd_printComposite.widthHint = 90;
+			printComposite.setLayoutData(gd_printComposite);
+		}
+		return printComposite;
+	}
+	public Button getBtnPrintTicket() {
+		if( btnPrintTicket == null ) {
+			btnPrintTicket = new Button(getPrintComposite(), SWT.NONE);
+			btnPrintTicket.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, true, true, 1, 1));
+			btnPrintTicket.setText("print ticket");
+		}
+		return btnPrintTicket;
+	}
+	public PrintService getSelectedPrintService() {
+		PrintService service = null;
+		try{
+			service = (PrintService)getPrintersCbx().getData( getPrintersCbx().getItem( getPrintersCbx().getSelectionIndex() ) );
+		}catch( Exception e1 ){
+			getLog().error( "Error selecting the printService", e1 );
+			getClient().getErrorBox( e1.getMessage() );
+		}
+		return service;
+	}
+	
+	private int poDetailQty = 0;
+	private Group grpTicketsComposite;
+	private Combo printersCbx;
+	private Group grpScanningInfo;
+	private Spinner numberOfCopiesSpn;
+	private ProgressBar progressBar;
+	private Button savePrintingSettingsBtn;
+	private Button autoPrintingChk;
+	private Button printDialogChk;
+	private Label infoUpcLbl;
+	private Label barcodeLbl;
+	private Label infoSizeLbl;
+	private Label infoColorLbl;
+	private Label infoItemLbl;
+	private Label infoSkuLabel;
+	private Button infoPreticketedCbx;
+	private Label poDetailLbl;
+	private Label packingDetailLbl;
+	private Composite colorsComposite;
+	private Group grpPoDetails;
+	private Group grpPackingDetails;
+	private Composite summaryScrolledComposite;
+	private ScrolledComposite scrolledComposite;
+	private Button btnCompleted;
+	private Button btnAddCarton = null;
+	private Composite topScanningComposite = null;
+	private Composite rightScanComposite = null;
+	private Label lblNowScanning = null;
+	private TabFolder tabFolder = null;
+	private TabItem tbtmScan = null;
+	private Composite scanComposite = null;
+	private Composite leftScanComposite = null;
+	private Composite scanningArea = null;
+	private Composite composite_1 = null;
+	private Button cleanCartonBtn = null;
+	private Button delCartonBtn = null;
+	private Composite scanningTicketViewer = null;
+	
+	/**
+	 * @wbp.parser.constructor
+	 */
+	public Client( Display display, User user) {
+		super( display.getActiveShell(), display, user );
+		
+		init();
+	}
+	public Client( Shell shell, Display display, User user ){
+		super(shell, display, user);
+		//super(display, SWT.SHELL_TRIM);
+		this.user = user;
+		try{
+			shell.dispose();
+			
+			init();
+			
+			this.open();
+			this.layout();
+			while (!this.isDisposed()) {
+				if (!display.readAndDispatch()) {
+					display.sleep();
+				}
+			}
+		}catch( Exception e ){
+			e.printStackTrace();
+		}
+		
+	}
+	
+	public TabFolder getTabFolder() {
+		if( tabFolder == null ) {
+			tabFolder = new TabFolder(this, SWT.NONE);
+			tabFolder.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
+		}
+		return tabFolder;
+	}
+	public TabItem getTbtmScan() {
+		if(  tbtmScan == null) {
+			tbtmScan = new TabItem(getTabFolder(), SWT.NONE);
+			tbtmScan.setText("scan");
+		}
+		return tbtmScan;
+	}
+	public Composite getScanComposite() {
+		if( scanComposite == null ) {
+			scanComposite = new Composite(getTabFolder(), SWT.NONE);
+			getTbtmScan().setControl(getScanComposite());
+			
+			GridLayout gl_bottomScanComposite = new GridLayout(2, false);
+			gl_bottomScanComposite.marginBottom = 5;
+			gl_bottomScanComposite.marginTop = 5;
+			gl_bottomScanComposite.marginRight = 5;
+			gl_bottomScanComposite.marginLeft = 5;
+			scanComposite.setLayout(gl_bottomScanComposite);
+		}
+		return scanComposite;
+	}
+	public Composite getLeftScanComposite() {
+		if( leftScanComposite == null ) {
+			leftScanComposite = new Composite(getScanComposite(), SWT.BORDER);
+			GridLayout gl_leftScanComposite = new GridLayout(4, false);
+			gl_leftScanComposite.marginTop = 2;
+			gl_leftScanComposite.marginRight = 2;
+			gl_leftScanComposite.marginLeft = 2;
+			gl_leftScanComposite.marginBottom = 2;
+			leftScanComposite.setLayout(gl_leftScanComposite);
+			GridData gd_leftScanComposite = new GridData(SWT.LEFT, SWT.FILL, false, true, 1, 2);
+			gd_leftScanComposite.widthHint = 300;
+			leftScanComposite.setLayoutData(gd_leftScanComposite);
+		}
+		return leftScanComposite;
+	}
+	public Combo getPurchaseOrderCbx() {
+		if( purchaseOrderCbx == null ) {
+			Label lblPo = new Label(getLeftScanComposite(), SWT.NONE);
+			lblPo.setAlignment(SWT.RIGHT);
+			lblPo.setFont(SWTResourceManager.getFont("Segoe UI", 8, SWT.NORMAL));
+			lblPo.setText("po:");
+			
+			purchaseOrderCbx = new Combo(getLeftScanComposite(), SWT.READ_ONLY);
+			purchaseOrderCbx.setFont(SWTResourceManager.getFont("Segoe UI", 8, SWT.NORMAL));
+			purchaseOrderCbx.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+		}
+		return purchaseOrderCbx;
+	}
+	public Combo getItemCbx() {
+		if( itemCbx == null ) {
+			Label itemLbl = new Label(getLeftScanComposite(), SWT.NONE);
+			itemLbl.setAlignment(SWT.RIGHT);
+			itemLbl.setFont(SWTResourceManager.getFont("Segoe UI", 8, SWT.NORMAL));
+			itemLbl.setText("item:");
+			
+			itemCbx = new Combo(getLeftScanComposite(), SWT.READ_ONLY);
+			itemCbx.setFont(SWTResourceManager.getFont("Segoe UI", 8, SWT.NORMAL));
+			itemCbx.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, false, false, 1, 1));
+		}
+		return itemCbx;
+	}
+	public Combo getColorCbx() {
+		if( colorCbx == null ) {
+			Label colorLbl = new Label(getLeftScanComposite(), SWT.NONE);
+			colorLbl.setAlignment(SWT.RIGHT);
+			colorLbl.setFont(SWTResourceManager.getFont("Segoe UI", 8, SWT.NORMAL));
+			colorLbl.setText("color:");
+			
+			colorCbx = new Combo(getLeftScanComposite(), SWT.READ_ONLY);
+			colorCbx.setFont(SWTResourceManager.getFont("Segoe UI", 8, SWT.NORMAL));
+			colorCbx.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+		}
+		return colorCbx;
+	}
+	public Combo getSizeCbx() {
+		if( sizeCbx == null ) {
+			Label sizeLbl = new Label(getLeftScanComposite(), SWT.NONE);
+			sizeLbl.setAlignment(SWT.RIGHT);
+			sizeLbl.setFont(SWTResourceManager.getFont("Segoe UI", 8, SWT.NORMAL));
+			sizeLbl.setText("size:");
+			
+			sizeCbx = new Combo(getLeftScanComposite(), SWT.READ_ONLY);
+			sizeCbx.setFont(SWTResourceManager.getFont("Segoe UI", 8, SWT.NORMAL));
+			sizeCbx.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, false, false, 1, 1));
+			
+			Label horizontalLine2 = new Label(getLeftScanComposite(), SWT.SEPARATOR | SWT.HORIZONTAL);
+			horizontalLine2.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 4, 1));
+		}
+		return sizeCbx;
+	}
+	public Label getPoDetailLbl() {
+		if( poDetailLbl == null ) {
+			poDetailLbl = new Label(getLeftScanComposite(), SWT.NONE);
+			poDetailLbl.setFont(SWTResourceManager.getFont("Segoe UI", 8, SWT.NORMAL));
+			poDetailLbl.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, false, false, 3, 1));
+			poDetailLbl.setText("po detail:");
+			
+			new Label(getLeftScanComposite(), SWT.NONE);
+		}
+		return poDetailLbl;
+	}
+	public Label getPackingDetailLbl() {
+		if( packingDetailLbl == null ) {
+			packingDetailLbl = new Label(getLeftScanComposite(), SWT.NONE);
+			packingDetailLbl.setFont(SWTResourceManager.getFont("Segoe UI", 8, SWT.NORMAL));
+			packingDetailLbl.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, false, false, 3, 1));
+			packingDetailLbl.setText("packing detail:");
+		}
+		return packingDetailLbl;
+	}
+	public Button getBtnAddCarton(){
+		if( btnAddCarton == null ) {
+			btnAddCarton = new Button(getLeftScanComposite(), SWT.NONE);
+			btnAddCarton.setFont(SWTResourceManager.getFont("Segoe UI", 8, SWT.NORMAL));
+			btnAddCarton.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false, 1, 1));
+			btnAddCarton.setText("add carton");
+		}
+		return btnAddCarton;
+	}
+	public Table getPackingDetailTbl() {
+		if( packingDetailTbl == null ) {
+			packingDetailTbl = new Table(getLeftScanComposite(), SWT.BORDER | SWT.FULL_SELECTION);
+			packingDetailTbl.setFont(SWTResourceManager.getFont("Segoe UI", 8, SWT.NORMAL));
+			
+			GridData gd_packingDetailTbl = new GridData(SWT.FILL, SWT.FILL, true, false, 4, 1);
+			gd_packingDetailTbl.heightHint = 120;
+			packingDetailTbl.setLayoutData(gd_packingDetailTbl);
+			packingDetailTbl.setHeaderVisible(true);
+			packingDetailTbl.setLinesVisible(true);
+			
+			TableColumn tblclmnSize = new TableColumn(packingDetailTbl, SWT.NONE);
+			tblclmnSize.setWidth(44);
+			tblclmnSize.setText("size");
+			
+			TableColumn tblclmnColor = new TableColumn(packingDetailTbl, SWT.NONE);
+			tblclmnColor.setWidth(95);
+			tblclmnColor.setText("color");
+			
+			TableColumn tblclmnSku = new TableColumn(packingDetailTbl, SWT.NONE);
+			tblclmnSku.setWidth(36);
+			tblclmnSku.setText("sku");
+			
+			TableColumn tblclmnQty_1 = new TableColumn(packingDetailTbl, SWT.NONE);
+			tblclmnQty_1.setWidth(30);
+			tblclmnQty_1.setText("qty");
+			
+			TableColumn tblclmnScanned = new TableColumn(packingDetailTbl, SWT.NONE);
+			tblclmnScanned.setWidth(60);
+			tblclmnScanned.setText("scanned");
+		}
+		return packingDetailTbl;
+	}
+	public ScrolledComposite getScrolledComposite() {
+		if( scrolledComposite == null ) {
+			Group grpSumary = new Group(getLeftScanComposite(), SWT.NONE);
+			grpSumary.setFont(SWTResourceManager.getFont("Segoe UI", 9, SWT.NORMAL));
+			GridLayout gl_grpSumary = new GridLayout(1, false);
+			gl_grpSumary.verticalSpacing = 0;
+			grpSumary.setLayout(gl_grpSumary);
+			grpSumary.setLayoutData(new GridData(SWT.FILL, SWT.FILL, false, true, 4, 1));
+			grpSumary.setText("summary");
+			
+			scrolledComposite = new ScrolledComposite(grpSumary, SWT.H_SCROLL | SWT.V_SCROLL);
+			scrolledComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
+			scrolledComposite.setExpandHorizontal(true);
+			scrolledComposite.setExpandVertical(true);
+		}
+		return scrolledComposite;
+	}
+	public Composite getSummaryScrolledComposite() {
+		if( summaryScrolledComposite == null ) {
+			summaryScrolledComposite = new Composite(getScrolledComposite(), SWT.NONE);
+			scrolledComposite.setContent(summaryScrolledComposite);
+			scrolledComposite.setMinSize(summaryScrolledComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT));
+			summaryScrolledComposite.setLayout(new GridLayout(3, false));
+			
+			new Label(summaryScrolledComposite, SWT.NONE);
+		}
+		return summaryScrolledComposite;
+	}
+	public Group getGrpPoDetails() {
+		if( grpPoDetails == null ) {
+			//grpPoDetails = new Group(getMaster().getMaster().getHiddenShell(), SWT.NONE);
+			grpPoDetails = new Group(summaryScrolledComposite, SWT.NONE);
+			grpPoDetails.setFont(SWTResourceManager.getFont("Segoe UI", 7, SWT.NORMAL));
+			GridLayout gl_grpPoDetails = new GridLayout(2, true);
+			gl_grpPoDetails.marginTop = 2;
+			grpPoDetails.setLayout(gl_grpPoDetails);
+			GridData gd_grpPoDetails = new GridData(SWT.LEFT, SWT.FILL, false, true, 1, 2);
+			gd_grpPoDetails.widthHint = 75;
+			grpPoDetails.setLayoutData(gd_grpPoDetails);
+			grpPoDetails.setText("PO Details");
+		}
+		return grpPoDetails;
+	}
+	public Group getGrpPackingDetails() {
+		if( grpPackingDetails == null ) {
+			grpPackingDetails = new Group(summaryScrolledComposite, SWT.NONE);
+			grpPackingDetails.setFont(SWTResourceManager.getFont("Segoe UI", 7, SWT.NORMAL));
+			GridLayout gl_grpPackingDetails = new GridLayout(2, true);
+			gl_grpPackingDetails.marginTop = 5;
+			grpPackingDetails.setLayout(gl_grpPackingDetails);
+			GridData gd_grpPackingDetails = new GridData(SWT.LEFT, SWT.FILL, false, true, 1, 2);
+			gd_grpPackingDetails.widthHint = 75;
+			grpPackingDetails.setLayoutData(gd_grpPackingDetails);
+			grpPackingDetails.setText("Pk Details");
+		}
+		return grpPackingDetails;
+	}
+	public Composite getColorsComposite() {
+		if( colorsComposite == null ) {
+			colorsComposite = new Composite(summaryScrolledComposite, SWT.NONE);
+			colorsComposite.setLayout(new GridLayout(1, false));
+			colorsComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
+		}
+		return colorsComposite;
+	}
+	public Composite getRightScanComposite() {
+		if( rightScanComposite == null ) {
+			rightScanComposite = new Composite(getScanComposite(), SWT.BORDER);
+			rightScanComposite.setLayout(new GridLayout(2, false));
+			rightScanComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
+		}
+		return rightScanComposite;
+	}
+	public Composite getTopScanningComposite() {
+		if( topScanningComposite == null ) {
+			topScanningComposite = new Composite(rightScanComposite, SWT.NONE);
+			topScanningComposite.setLayout(new FormLayout());
+			topScanningComposite.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, false, false, 2, 1));
+		}
+		
+		return topScanningComposite;
+	}
+	public Label getLblNowSanning() {
+		if( lblNowScanning == null ) {
+			lblNowScanning = new Label(getTopScanningComposite(), SWT.NONE);
+			FormData fd_lblNowScanning = new FormData();
+			fd_lblNowScanning.bottom = new FormAttachment(100);
+			fd_lblNowScanning.left = new FormAttachment(0, 29);
+			lblNowScanning.setLayoutData(fd_lblNowScanning);
+			lblNowScanning.setText("now scanning:");
+		}
+		return lblNowScanning;
+	}
+	public Text getScannedBarTxt() {
+		if( scannedBarTxt == null ) {
+			scannedBarTxt = new Text(getTopScanningComposite(), SWT.BORDER);
+			FormData fd_scannedBarTxt = new FormData();
+			fd_scannedBarTxt.top = new FormAttachment(100, -23);
+			fd_scannedBarTxt.bottom = new FormAttachment(100);
+			fd_scannedBarTxt.right = new FormAttachment( getLblNowSanning(), 167, SWT.RIGHT);
+			fd_scannedBarTxt.left = new FormAttachment( getLblNowSanning(), 5);
+			scannedBarTxt.setLayoutData(fd_scannedBarTxt);
+		}
+		return scannedBarTxt;
+	}
+	public Table getScannedItemsTbl() {
+		if( scannedItemsTbl == null ) {
+			scannedItemsTbl = new Table(getScanningArea(), SWT.BORDER | SWT.FULL_SELECTION);
+			scannedItemsTbl.setFont(SWTResourceManager.getFont("Segoe UI", 8, SWT.NORMAL));
+			scannedItemsTbl.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
+			scannedItemsTbl.setHeaderVisible(true);
+			scannedItemsTbl.setLinesVisible(true);
+			
+			TableColumn tblclmnItems = new TableColumn(scannedItemsTbl, SWT.NONE);
+			tblclmnItems.setWidth(45);
+			tblclmnItems.setText("items");
+			
+			TableColumn tblclmnUpc_1 = new TableColumn(scannedItemsTbl, SWT.NONE);
+			tblclmnUpc_1.setWidth(117);
+			tblclmnUpc_1.setText("upc");
+			
+			TableColumn tblclmnSize_1 = new TableColumn(scannedItemsTbl, SWT.NONE);
+			tblclmnSize_1.setWidth(57);
+			tblclmnSize_1.setText("size");
+			
+			TableColumn tblclmnColor_1 = new TableColumn(scannedItemsTbl, SWT.NONE);
+			tblclmnColor_1.setWidth(84);
+			tblclmnColor_1.setText("color");
+		}
+		return scannedItemsTbl;
+	}
+	public Composite getScanningArea() {
+		if( scanningArea == null ) {
+		Composite scanningArea = new Composite(getRightScanComposite(), SWT.BORDER);
+		scanningArea.setLayout(new GridLayout(1, false));
+		GridData gd_scanningArea = new GridData(SWT.LEFT, SWT.FILL, false, true, 1, 1);
+		gd_scanningArea.widthHint = 318;
+		scanningArea.setLayoutData(gd_scanningArea);
+		}
+		return scanningArea;
+	}
+	public Composite getComposite_1() {
+		if( composite_1 == null ) {
+			composite_1 = new Composite(scanningArea, SWT.NONE);
+			composite_1.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false, 1, 1));
+			composite_1.setLayout(new GridLayout(4, false));
+		}
+		return composite_1;
+	}
+	public Button getBtnCompleted() {
+		if( btnCompleted == null ) {
+			btnCompleted = new Button(getComposite_1(), SWT.TOGGLE);
+			btnCompleted.setFont(SWTResourceManager.getFont("Segoe UI", 8, SWT.NORMAL));
+			btnCompleted.setText("completed");
+		}
+		return btnCompleted;
+	}
+	public Button getDelBtn() {
+		Button delBtn = new Button(getComposite_1(), SWT.NONE);
+		delBtn.setFont(SWTResourceManager.getFont("Segoe UI", 8, SWT.NORMAL));
+		delBtn.setText("del scan");
+		return delBtn;
+	}
+	public Button getCleanCartonBtn() {
+		if( cleanCartonBtn == null ) {
+			cleanCartonBtn = new Button(getComposite_1(), SWT.NONE);
+			cleanCartonBtn.setFont(SWTResourceManager.getFont("Segoe UI", 8, SWT.NORMAL));
+			cleanCartonBtn.setText("clean carton");
+		}
+		return cleanCartonBtn;
+	}
+	public Button getDelCartonBtn() {
+		if( delCartonBtn == null ) {
+			delCartonBtn = new Button(getComposite_1(), SWT.NONE);
+			delCartonBtn.setFont(SWTResourceManager.getFont("Segoe UI", 8, SWT.NORMAL));
+			delCartonBtn.addSelectionListener(new SelectionAdapter() {
+				@Override
+				public void widgetSelected(SelectionEvent e) {
+					try {
+						getClient().deleteCarton();
+					} catch (Exception e1) {
+						getLog().error( "error deleting the carton", e1 );
+						getClient().getErrorBox( e1.getMessage() );
+					}
+				}
+			});
+			delCartonBtn.setText("del carton");
+		}
+		return delCartonBtn;
+	}
+	public Composite getScanningTicketViewer() {
+		if( scanningTicketViewer == null ) {
+			scanningTicketViewer = new Composite(getRightScanComposite(), SWT.BORDER);
+			scanningTicketViewer.setLayout(new GridLayout(1, false));
+			scanningTicketViewer.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
+		}
+		return scanningTicketViewer;
+	}
+	private void init() {
+		GridLayout gridLayout = new GridLayout(1, false);
+		gridLayout.marginTop = 5;
+		gridLayout.marginRight = 5;
+		gridLayout.marginLeft = 5;
+		gridLayout.marginWidth = 0;
+		setLayout(gridLayout);
+		
+		getTabFolder();
+		getTbtmScan();
+		getScanComposite();
+		getLeftScanComposite();
+		getPurchaseOrderCbx();
+		getItemCbx();
+		getColorCbx();
+		getSizeCbx();
+		getPoDetailLbl();
+		getPoDetailTbl();
+		getBtnAddCarton();
+		getPackingDetailTbl();
+		getGrpPoDetails();
+		getGrpPackingDetails();
+		getColorsComposite();
+		getRightScanComposite();
+		getTopScanningComposite();
+		getLblNowSanning();
+		getScanningArea();
+		getComposite_1();
+		getDelBtn();
+		getCleanCartonBtn();
+		getCleanCartonBtn();
+		getDelCartonBtn();
+		getBtnCompleted();
+		
+		getScanningTicketViewer();
+		
+		Composite scanningTicketViewer = new Composite(getRightScanComposite(), SWT.BORDER);
+		scanningTicketViewer.setLayout(new GridLayout(1, false));
+		scanningTicketViewer.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
+		
+		grpTicketsComposite = new Group(scanningTicketViewer, SWT.NONE);
+		grpTicketsComposite.setText("tickets");
+		grpTicketsComposite.setLayout(new GridLayout(2, false));
+		grpTicketsComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
+		
+		Composite bottomScanComposite = new Composite(scanComposite, SWT.NONE);
+		bottomScanComposite.setLayout(new GridLayout(2, false));
+		GridData gd_bottomScanComposite = new GridData(SWT.FILL, SWT.BOTTOM, true, false, 1, 1);
+		gd_bottomScanComposite.heightHint = 150;
+		bottomScanComposite.setLayoutData( gd_bottomScanComposite );
+		
+		grpScanningInfo = new Group(bottomScanComposite, SWT.NONE);
+		grpScanningInfo.setFont(SWTResourceManager.getFont("Segoe UI", 8, SWT.NORMAL));
+		grpScanningInfo.setLayout(new GridLayout(4, false));
+		grpScanningInfo.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
+		grpScanningInfo.setText("scanning info");
+		
+		infoUpcLbl = new Label(grpScanningInfo, SWT.NONE);
+		infoUpcLbl.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+		infoUpcLbl.setFont(SWTResourceManager.getFont("Segoe UI", 8, SWT.NORMAL));
+		infoUpcLbl.setText("upc:");
+		
+		Label verticalLineLbl = new Label(grpScanningInfo, SWT.SEPARATOR | SWT.VERTICAL);
+		verticalLineLbl.setLayoutData(new GridData(SWT.LEFT, SWT.FILL, false, true, 1, 5));
+		
+		Label lblSize = new Label(grpScanningInfo, SWT.NONE);
+		lblSize.setAlignment(SWT.RIGHT);
+		lblSize.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, false, false, 1, 1));
+		lblSize.setFont(SWTResourceManager.getFont("Segoe UI", 8, SWT.NORMAL));
+		lblSize.setText("size:");
+		
+		infoSizeLbl = new Label(grpScanningInfo, SWT.NONE);
+		infoSizeLbl.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+		infoSizeLbl.setFont(SWTResourceManager.getFont("Segoe UI", 8, SWT.NORMAL));
+		infoSizeLbl.setText("");
+		
+		barcodeLbl = new Label( grpScanningInfo, SWT.IMAGE_PNG );
+		barcodeLbl.setAlignment(SWT.CENTER);
+		GridData gd_barcodeLbl = new GridData(SWT.CENTER, SWT.FILL, false, true, 1, 4);
+		gd_barcodeLbl.widthHint = 150;
+		barcodeLbl.setLayoutData(gd_barcodeLbl);
+		
+		Label lblColor = new Label(grpScanningInfo, SWT.NONE);
+		lblColor.setAlignment(SWT.RIGHT);
+		lblColor.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, false, false, 1, 1));
+		lblColor.setFont(SWTResourceManager.getFont("Segoe UI", 8, SWT.NORMAL));
+		lblColor.setText("color:");
+		
+		infoColorLbl = new Label(grpScanningInfo, SWT.NONE);
+		infoColorLbl.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+		infoColorLbl.setFont(SWTResourceManager.getFont("Segoe UI", 8, SWT.NORMAL));
+		infoColorLbl.setText("");
+		
+		Label lblItem = new Label(grpScanningInfo, SWT.NONE);
+		lblItem.setAlignment(SWT.RIGHT);
+		lblItem.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, false, false, 1, 1));
+		lblItem.setFont(SWTResourceManager.getFont("Segoe UI", 8, SWT.NORMAL));
+		lblItem.setText("item:");
+		
+		infoItemLbl = new Label(grpScanningInfo, SWT.NONE);
+		infoItemLbl.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+		infoItemLbl.setFont(SWTResourceManager.getFont("Segoe UI", 8, SWT.NORMAL));
+		infoItemLbl.setText("");
+		
+		Label lblSku = new Label(grpScanningInfo, SWT.NONE);
+		lblSku.setAlignment(SWT.RIGHT);
+		lblSku.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, false, false, 1, 1));
+		lblSku.setFont(SWTResourceManager.getFont("Segoe UI", 8, SWT.NORMAL));
+		lblSku.setText("sku:");
+		
+		infoSkuLabel = new Label(grpScanningInfo, SWT.NONE);
+		infoSkuLabel.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+		infoSkuLabel.setFont(SWTResourceManager.getFont("Segoe UI", 8, SWT.NORMAL));
+		infoSkuLabel.setText("");
+		
+		infoPreticketedCbx = new Button(grpScanningInfo, SWT.CHECK);
+		infoPreticketedCbx.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false, 2, 1));
+		infoPreticketedCbx.setText("preticketed");
+				
+		progressBar = new ProgressBar(grpScanningInfo, SWT.NONE);
+		GridData gd_progressBar = new GridData(SWT.FILL, SWT.CENTER, true, false, 4, 1);
+		gd_progressBar.heightHint = 5;
+		progressBar.setLayoutData(gd_progressBar);
+		
+		Group grpPrintingOptions = new Group(bottomScanComposite, SWT.NONE);
+		grpPrintingOptions.setFont(SWTResourceManager.getFont("Segoe UI", 8, SWT.NORMAL));
+		GridLayout gl_grpPrintingOptions = new GridLayout(2, false);
+		gl_grpPrintingOptions.verticalSpacing = 2;
+		grpPrintingOptions.setLayout(gl_grpPrintingOptions);
+		GridData gd_grpPrintingOptions = new GridData(SWT.RIGHT, SWT.FILL, false, true, 1, 1);
+		gd_grpPrintingOptions.widthHint = 250;
+		grpPrintingOptions.setLayoutData(gd_grpPrintingOptions);
+		grpPrintingOptions.setText("printing settings");
+		
+		Label lblPrinters = new Label(grpPrintingOptions, SWT.NONE);
+		lblPrinters.setFont(SWTResourceManager.getFont("Segoe UI", 8, SWT.NORMAL));
+		lblPrinters.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false, 1, 1));
+		lblPrinters.setText("printers:");
+		
+		printersCbx = new Combo(grpPrintingOptions, SWT.READ_ONLY);
+		printersCbx.setFont(SWTResourceManager.getFont("Segoe UI", 7, SWT.NORMAL));
+		GridData gd_printersCbx = new GridData(SWT.FILL, SWT.BOTTOM, true, false, 1, 1);
+		gd_printersCbx.heightHint = 14;
+		printersCbx.setLayoutData(gd_printersCbx);
+		
+		Label lblCopies = new Label(grpPrintingOptions, SWT.NONE);
+		lblCopies.setFont(SWTResourceManager.getFont("Segoe UI", 8, SWT.NORMAL));
+		lblCopies.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false, 1, 1));
+		lblCopies.setText("copies:");
+		
+		numberOfCopiesSpn = new Spinner(grpPrintingOptions, SWT.BORDER);
+		numberOfCopiesSpn.setFont(SWTResourceManager.getFont("Segoe UI", 8, SWT.NORMAL));
+		GridData gd_numberOfCopiesSpn = new GridData(SWT.LEFT, SWT.BOTTOM, false, false, 1, 1);
+		gd_numberOfCopiesSpn.heightHint = 14;
+		numberOfCopiesSpn.setLayoutData(gd_numberOfCopiesSpn);
+		Label autoPrintingLbl = new Label(grpPrintingOptions, SWT.NONE);
+		autoPrintingLbl.setFont(SWTResourceManager.getFont("Segoe UI", 8, SWT.NORMAL));
+		autoPrintingLbl.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false, 1, 1));
+		autoPrintingLbl.setText( "auto:" );
+		
+		autoPrintingChk = new Button(grpPrintingOptions, SWT.CHECK);
+		autoPrintingChk.setFont(SWTResourceManager.getFont("Segoe UI", 8, SWT.NORMAL));
+		autoPrintingChk.setToolTipText("automatic printing after completing the carton");
+		
+		Label lblPrintdialog = new Label(grpPrintingOptions, SWT.NONE);
+		lblPrintdialog.setFont(SWTResourceManager.getFont("Segoe UI", 8, SWT.NORMAL));
+		lblPrintdialog.setText("print-dialog:");
+		
+		printDialogChk = new Button(grpPrintingOptions, SWT.CHECK);
+		printDialogChk.setFont(SWTResourceManager.getFont("Segoe UI", 8, SWT.NORMAL));
+		new Label(grpPrintingOptions, SWT.NONE);
+		
+		savePrintingSettingsBtn = new Button(grpPrintingOptions, SWT.NONE);
+		savePrintingSettingsBtn.setFont(SWTResourceManager.getFont("Segoe UI", 8, SWT.NORMAL));
+		savePrintingSettingsBtn.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				String defaultPrinter = getPrintersCbx().getText();
+				int numberOfCopies = Integer.parseInt( getNumberOfCopiesSpn().getText() );
+				boolean automaticPrinting = getAutoPrintingChk().getSelection();
+				
+				getTicketPrinter().setDefaultPrinterName( defaultPrinter );
+				getTicketPrinter().setDefaultNumberOfCopies( numberOfCopies );
+				getTicketPrinter().setAutoPrint( automaticPrinting );
+				
+				if( getTicketPrinter().saveTicketChanges() ){
+					getClient().getInformationBox( "printing settings saved:\n - default-printer: "+defaultPrinter+"\n - number-of-copies: " + numberOfCopies );
+				}else{
+					getClient().getErrorBox( "there is a problem saving printing settings, please contact your sysadmin" );
+				}
+			}
+		});
+		savePrintingSettingsBtn.setLayoutData(new GridData(SWT.CENTER, SWT.BOTTOM, false, false, 1, 1));
+		savePrintingSettingsBtn.setText("save");
+		
+		Composite composite = new Composite(this, SWT.BORDER);
+		GridData gd_composite = new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1);
+		gd_composite.heightHint = 30;
+		composite.setLayoutData(gd_composite);
+		
+		getPolybagViewer();
+		getTicketViewer();
+		
+		createContents();
+	}
+	protected void createContents() {
+		setText("purchase order client");
+		setSize(1037, 748);
+		
+		try {
+			PrintingUtils printing = new PrintingUtils(getMaster(), getShell());
+			int printerIndex = -1;
+			int i = 0;
+			for( PrintService print : printing.getServices() ){
+				if( getTicketPrinter().getDefaultPrinterName()!=null && !getTicketPrinter().getDefaultPrinterName().isEmpty() ){
+					if( getTicketPrinter().getDefaultPrinterName().trim().compareTo( print.getName().trim() )==0 ){
+						printerIndex = i;
+					}
+					//getLog().info( "default-ticket-printer:" + getMaster().getDefaultTicketPrinter() + ", print: " + print.getName() + ", printerIndex: " + printerIndex );
+				}
+				i++;
+				getPrintersCbx().add( print.getName() );
+				getPrintersCbx().setData( print.getName(), print);
+			}
+			getPrintersCbx().select(printerIndex);
+			getNumberOfCopiesSpn().setSelection(getTicketPrinter().getDefaultNumberOfCopies() );
+			getAutoPrintingChk().setSelection( getTicketPrinter().isAutoPrint() );
+			getPrintDialogChk().setSelection( getTicketPrinter().isShowPrintDialog() );
+		} catch (IOException e) {
+			getLog().error("error", e);
+			getClient().getErrorBox( e.getMessage() );
+		}
+		
+		getClient().loadAvailablePurchaseOrders();
+	}
+	
+	@Override
+	protected void checkSubclass() {
+	}
+	public Table getPoDetailTbl() {
+		if( poDetailTbl == null ) {
+			poDetailTbl = new Table(getLeftScanComposite(), SWT.BORDER | SWT.FULL_SELECTION);
+			poDetailTbl.setFont(SWTResourceManager.getFont("Segoe UI", 8, SWT.NORMAL));
+			GridData gd_poDetailTbl = new GridData(SWT.FILL, SWT.FILL, true, false, 4, 1);
+			gd_poDetailTbl.heightHint = 100;
+			poDetailTbl.setLayoutData(gd_poDetailTbl);
+			poDetailTbl.setHeaderVisible(true);
+			poDetailTbl.setLinesVisible(true);
+			
+			TableColumn tableColumn = new TableColumn(getPoDetailTbl(), SWT.NONE);
+			tableColumn.setWidth(30);
+			
+			TableColumn tblclmnUpc = new TableColumn(getPoDetailTbl(), SWT.NONE);
+			tblclmnUpc.setWidth(105);
+			tblclmnUpc.setText("upc");
+			
+			TableColumn tblclmnQty = new TableColumn(getPoDetailTbl(), SWT.NONE);
+			tblclmnQty.setWidth(30);
+			tblclmnQty.setText("qty");
+			
+			TableColumn tblclmnCarton = new TableColumn(getPoDetailTbl(), SWT.NONE);
+			tblclmnCarton.setWidth(50);
+			tblclmnCarton.setText("carton");
+			
+			TableColumn tblclmnReady = new TableColumn(getPoDetailTbl(), SWT.NONE);
+			tblclmnReady.setWidth(45);
+			tblclmnReady.setText("ready");
+		}
+		return poDetailTbl;
+	}
+	
+	public int getLastSku( PurchaseOrder po ){
+		int lastSku = 0;
+		
+		List<PackingDetail> pdList = new ArrayList<PackingDetail>();
+		
+		for( PurchaseOrderDetail pod : po.getPurchaseOrderDetails() ){
+			if( !pod.getDeleted() ){
+				for( PackingDetail pd : pod.getPackingDetails() ){
+					pdList.add( pd );
+				}
+			}
+		}
+		
+		Collections.sort(pdList, new PackageDetailComparator() );
+		lastSku = pdList.get(pdList.size()-1).getSku();
+		
+		return lastSku;
+	}
+	
+	/*
+	 * main method
+	 */
+	public static void main(String args[]) {
+		try {
+			Display display = Display.getDefault();
+			User user = UserRepo.findUser( "admin", "guacalito");
+			Client shell = new Client(display, user);
+			shell.open();
+			shell.layout();
+			while (!shell.isDisposed()) {
+				if (!display.readAndDispatch()) {
+					display.sleep();
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	/*
+	 * scannin control methods
+	 */
+	public boolean isScanning(){
+		boolean scanning = false;
+		
+		scanning = !(!getPoDetailTbl().getEnabled() && !getSizeCbx().getEnabled() && !getColorCbx().getEnabled() && 
+				!getItemCbx().getEnabled() && !getPoDetailTbl().getEnabled() && !getPackingDetailTbl().getEnabled());
+		
+		return scanning;
+	}
+	public boolean lockForScanning(){
+		boolean locked = false;
+		
+		getPoDetailTbl().setEnabled(false);
+		getSizeCbx().setEnabled(false);
+		getColorCbx().setEnabled(false);
+		getItemCbx().setEnabled(false);
+		getPoDetailTbl().setEnabled(false);
+		getPackingDetailTbl().setEnabled(false);
+		
+		locked = !(!getPoDetailTbl().getEnabled() && !getSizeCbx().getEnabled() && !getColorCbx().getEnabled() && 
+				!getItemCbx().getEnabled() && !getPoDetailTbl().getEnabled() && !getPackingDetailTbl().getEnabled());
+		
+		return locked;
+	}
+	public boolean unlockScanningFinished(){
+		boolean unlocked = false;
+		
+		getPoDetailTbl().setEnabled(true);
+		getSizeCbx().setEnabled(true);
+		getColorCbx().setEnabled(true);
+		getItemCbx().setEnabled(true);
+		getPoDetailTbl().setEnabled(true);
+		getPackingDetailTbl().setEnabled(true);
+		getLayout();
+		
+		unlocked = (getPoDetailTbl().getEnabled() && getSizeCbx().getEnabled() && getColorCbx().getEnabled() && 
+				getItemCbx().getEnabled() && getPoDetailTbl().getEnabled() && getPackingDetailTbl().getEnabled() );
+		
+		return unlocked;
+	}
+	public int getPoDetailQty(){
+		return poDetailQty;
+	}
+	public void setPoDetailQty( int poDetailQty ){
+		this.poDetailQty = poDetailQty;
+	}
+	public Group getGrpTicketsComposite() {
+		return grpTicketsComposite;
+	}
+	public Combo getPrintersCbx() {
+		return printersCbx;
+	}
+	public Group getGrpScanningInfo() {
+		return grpScanningInfo;
+	}
+	public Spinner getNumberOfCopiesSpn() {
+		return numberOfCopiesSpn;
+	}
+	public ProgressBar getProgressBar() {
+		return progressBar;
+	}
+	public Button getSavePrintingSettingsBtn() {
+		return savePrintingSettingsBtn;
+	}
+	public Button getAutoPrintingChk() {
+		return autoPrintingChk;
+	}
+	public Button getPrintDialogChk() {
+		return printDialogChk;
+	}
+	public Label getInfoUpcLbl() {
+		return infoUpcLbl;
+	}
+	public Label getBarcodeLbl() {
+		return barcodeLbl;
+	}
+	public Label getInfoSizeLbl() {
+		return infoSizeLbl;
+	}
+	public Label getInfoColorLbl() {
+		return infoColorLbl;
+	}
+	public Label getInfoItemLbl() {
+		return infoItemLbl;
+	}
+	public Label getInfoSkuLabel() {
+		return infoSkuLabel;
+	}
+	public Button getInfoPreticketedCbx() {
+		return infoPreticketedCbx;
+	}
+	
+	public User getUser() {
+		return user;
+	}
+	public ClientLogic getClient() {
+		if( client == null ) {
+			client = new com.uslc.po.gui.logic.ClientLogic(this, getUser());
+		}
+		return client;
+	}
+	
+	private ClientPackingDetailTable getSelectedPackingDetail() {
+		ClientPackingDetailTable cpdt = null;
+		
+		try {
+			TableItem[] items = getClient().getPackingDetailTbl().getSelection();
+			if( items!=null ){
+				for (TableItem item : items) {
+					cpdt = (ClientPackingDetailTable)item.getData();
+				}
+			}
+		} catch( Exception e ) {
+			getLog().error( "error on retrieving the selected packing detail", e );
+		}
+		
+		return cpdt;
+	}
+	
+	@Override
+	public Logger getLog() {
+		if( log == null ) {
+			log = Logger.getLogger( Client.class );
+			PropertyConfigurator.configure( "log4j.properties" );
+		}
+		return log;
+	}
+	@Override
+	public void setSize() {
+		// TODO Auto-generated method stub
+		
+	}
+	@Override
+	public void initGui() {
+		// TODO Auto-generated method stub
+		
+	}
+}

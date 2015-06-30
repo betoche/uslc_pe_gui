@@ -1,0 +1,290 @@
+package com.uslc.po.gui.master;
+
+import org.apache.log4j.Logger;
+import org.apache.log4j.PropertyConfigurator;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.FileDialog;
+import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.MessageBox;
+import org.eclipse.swt.widgets.TableItem;
+import com.uslc.po.gui.util.PurchaseOrder;
+import com.uslc.po.jpa.util.Constants;
+import com.uslc.po.jpa.util.UslcJpa;
+
+public class MasterTopComposite extends Composite {
+	private Master master = null;
+	private Button uploadPo = null;
+	private Button print = null;
+	
+	private Button savePo = null;
+	private Button editPo = null;
+	private Button deletePo = null;
+	private Button cancel = null;
+	private Button refresh = null;
+	
+	private GridData gdButtonsLeft = null;
+	private GridData gdButtonsRight = null;
+	private Logger log = null;
+	
+	public MasterTopComposite( Master master ){
+		super( master.getShell(), SWT.BORDER );
+		this.master = master;
+		initComposite();
+	}
+	
+	private void initComposite(){
+		GridData data = new GridData( SWT.FILL, SWT.FILL, true, false );
+		data.heightHint=50;
+		data.horizontalSpan = 3;
+		setLayoutData(data);
+		
+		GridLayout layout = new GridLayout( 8, false );
+		setLayout( layout );
+		
+		getUploadPo();
+		getPrint();
+		
+		GridData gd = new GridData( GridData.HORIZONTAL_ALIGN_CENTER | GridData.VERTICAL_ALIGN_CENTER );
+		gd.grabExcessHorizontalSpace = true;
+		gd.grabExcessVerticalSpace = true;
+		Label title = new Label(this, SWT.NONE);
+		title.setText( "master" );
+		title.setLayoutData(gd);
+		title.setAlignment( SWT.CENTER );
+		//(new Composite( this, SWT.NONE ) ).setLayoutData(gd);
+		
+		getSavePo();
+		getEditPo();
+		getDeletePo();
+		getCancel();
+		getRefresh();
+	}
+	
+	public Button getPrint() {
+		if( print == null ) {
+			print = new Button( this, SWT.PUSH );
+			print.setText( "print" );
+			print.setEnabled(false);
+			print.setLayoutData(getGdButtonsLeft());
+			Image img = new Image(getDisplay(), "images/print.ico");
+			print.setImage(img);
+			print.addSelectionListener( new SelectionAdapter() {
+				
+				@Override
+				public void widgetSelected(SelectionEvent arg0) {
+					if(getMaster().getMasterCenter().getPackingDetailViewer().isVisible()){
+						//getMaster().getMasterCenter().getPackingDetailViewer().printTicket();
+						getMaster().getMasterCenter().getPackingDetailViewer().exportToImage();
+					}
+				}
+			} );
+		}
+		return print;
+	}
+	public Button getUploadPo() {
+		if( uploadPo == null ){
+			uploadPo = new Button( this, SWT.PUSH );
+			uploadPo.setText( "upload" );
+			uploadPo.setLayoutData(getGdButtonsLeft());
+			Image img = new Image(getDisplay(), "images/upload.png");
+			uploadPo.setImage(img);
+			
+			uploadPo.addSelectionListener(new SelectionAdapter() {
+				
+				@Override
+				public void widgetSelected(SelectionEvent arg0) {
+					showFileUploadDialog();
+				}
+			});
+		}
+		return uploadPo;
+	}
+	public void showFileUploadDialog(){
+		FileDialog dlg = new FileDialog( getMaster().getShell(),  SWT.OPEN  );
+		dlg.setFilterExtensions( new String[]{ "*.xlsx", "*.xls" } );
+		dlg.setText("Open");
+		String path = dlg.open();
+		if( path == null ){
+			return;
+		}else{
+			getMaster().getMasterCenter().showComposite( getMaster().getMasterCenter().getNewPurchaseOrder() );
+			Exception e = getMaster().getMasterCenter().getNewPurchaseOrder().fillWithUploadedFile( path );
+			if( e==null ){
+				//getMaster().getMasterCenter().showComposite( getMaster().getMasterCenter().getNewPurchaseOrder() );
+				getMaster().getMasterCenter().layout();
+				getMaster().getShell().layout();
+			}else{
+				getMaster().getMasterCenter().getNewPurchaseOrder().hide();
+				MessageBox box = new MessageBox( getShell(), SWT.ICON_ERROR);
+				box.setText( Constants.MESSAGE_BOX_DIAG_TITLE.toString() );
+				box.setMessage( "error uploading the file\n\n"+e.getMessage() );
+				box.open();
+			}
+		}
+	}
+	public Button getSavePo() {
+		if( savePo == null ){
+			savePo = new Button( this, SWT.PUSH );
+			savePo.setText( "save" );
+			savePo.setEnabled(false);
+			savePo.setLayoutData(getGdButtonsRight());
+			Image img = new Image(getDisplay(), "images/save.png");
+			savePo.setImage(img);
+			savePo.addSelectionListener(new SelectionAdapter() {
+				
+				@Override
+				public void widgetSelected(SelectionEvent arg0) {
+					getMaster().getMasterCenter().getNewPurchaseOrder().savePo();
+				}
+			});
+		}
+		return savePo;
+	}
+	public Button getEditPo() {
+		if( editPo == null ){
+			editPo = new Button( this, SWT.PUSH );
+			editPo.setText( "edit" );
+			editPo.setEnabled(false);
+			Image img = new Image(getDisplay(), "images/edit.png");
+			editPo.setImage(img);
+			editPo.setLayoutData(getGdButtonsRight());
+			editPo.addSelectionListener( new SelectionAdapter() {
+				
+				@Override
+				public void widgetSelected(SelectionEvent arg0) {
+					getMaster().getErrorBox( "missing method declaration" );
+				}
+			});
+		}
+		return editPo;
+	}
+	public Button getDeletePo() {
+		if( deletePo == null ){
+			deletePo = new Button( this, SWT.PUSH );
+			deletePo.setText( "delete" );
+			deletePo.setEnabled(false);
+			deletePo.addSelectionListener(new SelectionAdapter(){
+				@Override
+				public void widgetSelected( SelectionEvent event ){
+					getLog().info( "inside widgetSelected from DeletePo" );
+					try{
+						PurchaseOrder p = null;
+						TableItem[] items = getMaster().getMasterLeft().getPurchaseOrderTbl().getSelection();
+						for (TableItem item : items) {
+							p = (PurchaseOrder)item.getData();
+						}
+					
+					
+						if( p!=null && !p.getPo().getDeleted() ){
+							com.uslc.po.jpa.entity.PurchaseOrder po = p.getPo();
+							MessageBox box = new MessageBox(getMaster().getShell(), SWT.ICON_QUESTION | SWT.YES | SWT.NO );
+							box.setText( Constants.MESSAGE_BOX_DIAG_TITLE.toString() );
+							box.setMessage( "you are about to delete the purchase order with reference number: "+po.getReferenceNumber()+"\ndo you want to proceed?" );
+							if( box.open()==SWT.YES ){
+								po.setDeleted(true);
+								UslcJpa jpa = new UslcJpa();
+								try {
+									if(jpa.persist(po)){
+										box = new MessageBox(getMaster().getShell(), SWT.ICON_INFORMATION);
+										box.setText( Constants.MESSAGE_BOX_DIAG_TITLE.toString() );
+										box.setMessage( "purchase order: " + po.getReferenceNumber() + " deleted correctly." );
+										getMaster().hideAllComposites();
+										getMaster().getMasterLeft().getLiveDataAccessLifeCicle().clean();
+										getMaster().getMasterLeft().getLiveDataAccessLifeCicle().displayValues();
+									}else{
+										box = new MessageBox(getMaster().getShell(), SWT.ICON_ERROR);
+										box.setText( Constants.MESSAGE_BOX_DIAG_TITLE.toString() );
+										box.setMessage( "there was a problem while deleting the purchase order: " + po.getReferenceNumber() + ",\nplease contact your system admin." );
+									}
+									
+								} catch (Exception e) {
+									box = new MessageBox(getMaster().getShell(), SWT.ICON_ERROR);
+									box.setText( Constants.MESSAGE_BOX_DIAG_TITLE.toString() );
+									box.setMessage( "there was a problem while deleting the purchase order: " + po.getReferenceNumber() + ",\nplease contact your system admin.\n\nERROR:\n" + e.toString() );
+									getLog().error( "eror deleting po["+po.getId()+"]", e );
+								}
+								box.open();
+							}
+						}
+					}catch( Exception e ){
+						getLog().error( "error?", e );
+					}
+				}
+			});
+			Image img = new Image(getDisplay(), "images/delete.png");
+			deletePo.setImage(img);
+			deletePo.setLayoutData(getGdButtonsRight());
+		}
+		return deletePo;
+	}
+	public Button getCancel() {
+		if( cancel == null ){
+			cancel = new Button( this, SWT.PUSH );
+			cancel.setText( "cancel" );
+			cancel.setEnabled(false);
+			cancel.setLayoutData(getGdButtonsRight());
+			Image img = new Image(getDisplay(), "images/cancel.png");
+			cancel.setImage(img);
+			cancel.addSelectionListener( new SelectionAdapter() {
+				
+				@Override
+				public void widgetSelected(SelectionEvent arg0) {
+					getMaster().getMasterCenter().getMaster().hideAllComposites();
+				}
+			});
+		}
+		return cancel;
+	}
+	public Button getRefresh() {
+		if( refresh == null ){
+			refresh = new Button( this, SWT.PUSH );
+			refresh.setText( "refresh" );
+			refresh.setLayoutData(getGdButtonsRight());
+			Image img = new Image(getDisplay(), "images/refresh.png");
+			refresh.setImage(img);
+			refresh.addSelectionListener( new SelectionAdapter() {
+				
+				@Override
+				public void widgetSelected(SelectionEvent arg0) {
+					getMaster().updateLiveDataAccess();
+				}
+			});
+		}
+		return refresh;
+	}
+	
+	private GridData getGdButtonsLeft(){
+		if( gdButtonsLeft == null ){
+			gdButtonsLeft = new GridData( GridData.FILL_VERTICAL | GridData.HORIZONTAL_ALIGN_BEGINNING | GridData.VERTICAL_ALIGN_CENTER );
+			gdButtonsLeft.grabExcessVerticalSpace = true;
+			gdButtonsLeft.widthHint=80;
+		}
+		return gdButtonsLeft;
+	}
+	private GridData getGdButtonsRight(){
+		if( gdButtonsRight == null ){
+			gdButtonsRight = new GridData( GridData.FILL_VERTICAL | GridData.HORIZONTAL_ALIGN_END | GridData.VERTICAL_ALIGN_CENTER );
+			gdButtonsRight.grabExcessVerticalSpace = true;
+			gdButtonsRight.widthHint=80;
+		}
+		return gdButtonsRight;
+	}
+
+	private Master getMaster(){
+		return master;
+	}
+	private Logger getLog(){
+		if( log == null ){
+			log = Logger.getLogger( MasterTopComposite.class );
+			PropertyConfigurator.configure( "log4j.properties" );
+		}
+		return log;
+	}
+}

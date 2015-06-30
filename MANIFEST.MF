@@ -1,0 +1,17 @@
+Manifest-Version: 1.0
+Created-By: Alberto J. Larios Sanchez
+Main-Class: com.uslc.po.gui.client.POLogin
+Class-Path: org.eclipse.swt.win32.win32.x86_3.102.1.v20130827-2048.jar jasperreports-3.7.6.jar mysql-connector-java-5.1.6-bin.jar 
+ avalon-framework-4.1.3.jar barcode4j.jar BarcodeEngine v1.3.jar comm.jar commons-beanutils-1.7.0.jar commons-collections-3.2.1.jar 
+ commons-digester-1.7.jar commons-logging.jar core-2.3.0.jar javase-2.3.0.jar javax.servlet-5.1.11.jar com.ibm.icu_50.1.1.v201304230130.jar 
+ org.eclipse.core.commands_3.6.100.v20130515-1857.jar org.eclipse.equinox.common_3.6.200.v20130402-1505.jar org.eclipse.equinox.registry_3.5.301.v20130717-1549.jar 
+ org.eclipse.jface_3.9.1.v20130725-1141.jar org.eclipse.osgi_3.9.1.v20130814-1242.jar org.eclipse.swt.win32.win32.x86_3.102.1.v20130827-2048.jar 
+ org.eclipse.text_3.5.300.v20130515-1451.jar org.eclipse.ui.forms_3.6.1.v20130822-1117.jar 
+ org.eclipse.ui.workbench_3.105.1.v20130821-1411.jar swtjasperviewer-1.2.0.jar itext-2.1.7.jar 
+ jasperreports-3.7.6.jar joda-time-1.6.2.jar spring-beans.jar spring-core-2.5.6.jar uslc_jpa.jar 
+ javax.persistence.source_2.1.0.v201304241213.jar javax.persistence_2.1.0.v201304241213.jar 
+ org.eclipse.persistence.jpa.modelgen.source_2.5.0.v20130507-3faac2b.jar org.eclipse.persistence.jpa.modelgen_2.5.0.v20130507-3faac2b.jar 
+ org.eclipse.persistence.jpars.source_2.5.0.v20130507-3faac2b.jar org.eclipse.persistence.jpars_2.5.0.v20130507-3faac2b.jar 
+ eclipselink.jar dom4j-1.6.1.jar poi-3.9-20121203.jar poi-ooxml-3.9-20121203.jar poi-ooxml-schemas-3.9-20121203.jar 
+ xmlbeans-2.3.0.jar
+
